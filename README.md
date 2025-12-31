@@ -109,8 +109,6 @@ The panel includes:
 
 Skills built with SkillForge are not ephemeral. A dedicated **Evolution & Timelessness Agent** scores every skill on its potential for longevity, extensibility, and future-readiness.
 
-![Evolution Mandate](assets/images/08-evolution-mandate.png)
-
 **The skill must achieve a score of ≥7/10 to pass. This is a non-negotiable quality gate.**
 
 ---
