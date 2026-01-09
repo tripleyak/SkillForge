@@ -431,6 +431,111 @@ Before finalizing a skill with scripts, verify:
 
 ---
 
+## Hooks Integration
+
+Skills can leverage hooks for automatic script invocation during tool use.
+
+### When to Use Hooks with Scripts
+
+| Scenario | Hook | Script Pattern |
+|----------|------|----------------|
+| Validate before generation | PreToolUse on Write | `validation/validate_input.py` |
+| Verify after generation | PostToolUse on Write | `validation/verify_output.py` |
+| Log all tool activity | PostToolUse (all) | `logging/activity_log.py` |
+| Cleanup on completion | Stop | `state/cleanup.py` |
+
+### Hook + Script Integration Pattern
+
+**Skill frontmatter:**
+```yaml
+---
+name: validated-generator
+hooks:
+  PreToolUse:
+    - matcher: "Bash(python:scripts/generate*)"
+      hooks:
+        - type: command
+          command: "python scripts/validate_params.py $TOOL_INPUT"
+  PostToolUse:
+    - matcher: "Write"
+      hooks:
+        - type: command
+          command: "python scripts/verify_artifact.py $TOOL_OUTPUT"
+---
+```
+
+**Script requirements for hook integration:**
+1. Accept input via `$TOOL_INPUT` or `$TOOL_OUTPUT` environment variables
+2. Exit code 0 allows tool execution to proceed
+3. Exit code non-0 blocks tool execution (PreToolUse) or flags error (PostToolUse)
+4. Output to stderr for error messages (stdout may be captured)
+
+### Hook Script Template
+
+```python
+#!/usr/bin/env python3
+"""
+hook_validator.py - Validate tool input before execution
+
+Called by PreToolUse hook with $TOOL_INPUT containing the tool parameters.
+Exit 0 to allow, exit 1 to block.
+"""
+
+import os
+import sys
+import json
+
+def validate_input(tool_input: str) -> tuple[bool, str]:
+    """Validate the tool input. Returns (is_valid, reason)."""
+    try:
+        params = json.loads(tool_input)
+        # Add validation logic here
+        return True, "Input valid"
+    except json.JSONDecodeError:
+        return False, "Invalid JSON input"
+
+def main():
+    tool_input = os.environ.get("TOOL_INPUT", "")
+
+    if not tool_input:
+        print("Warning: No TOOL_INPUT provided", file=sys.stderr)
+        sys.exit(0)  # Allow by default if no input
+
+    is_valid, reason = validate_input(tool_input)
+
+    if not is_valid:
+        print(f"Blocked: {reason}", file=sys.stderr)
+        sys.exit(1)
+
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()
+```
+
+### Agentic Capability Enhancement
+
+Hooks enable fully autonomous skill execution:
+
+```
+WITHOUT HOOKS:
+  Claude runs script → Script fails → Claude notices → Claude retries
+  (Multiple tool calls, potential for missed errors)
+
+WITH HOOKS:
+  PreToolUse validates → Only valid calls proceed → PostToolUse verifies
+  (Single tool call, guaranteed validation)
+```
+
+| Capability | Without Hooks | With Hooks |
+|------------|---------------|------------|
+| Input validation | Manual check in script | Automatic gate |
+| Output verification | Separate tool call | Inline verification |
+| Error handling | After-the-fact | Preventive |
+| Audit trail | Custom logging | Built-in hook logging |
+
+---
+
 ## Anti-Patterns
 
 | Avoid | Why | Instead |

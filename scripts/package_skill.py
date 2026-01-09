@@ -15,7 +15,17 @@ Example:
 
 import sys
 import zipfile
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
+
+
+@dataclass
+class PackageResult:
+    """Result of packaging a skill."""
+    success: bool
+    message: str
+    output_path: Optional[Path] = None
 
 # Import validation from quick_validate
 try:
@@ -27,7 +37,7 @@ except ImportError:
     from quick_validate import validate_skill
 
 
-def package_skill(skill_path, output_dir=None):
+def package_skill(skill_path, output_dir=None) -> PackageResult:
     """
     Package a skill folder into a .skill file.
 
@@ -36,32 +46,27 @@ def package_skill(skill_path, output_dir=None):
         output_dir: Optional output directory for the .skill file (defaults to current directory)
 
     Returns:
-        Path to the created .skill file, or None if error
+        PackageResult with success status, message, and output path
     """
     skill_path = Path(skill_path).resolve()
 
     # Validate skill folder exists
     if not skill_path.exists():
-        print(f"❌ Error: Skill folder not found: {skill_path}")
-        return None
+        return PackageResult(False, f"Skill folder not found: {skill_path}")
 
     if not skill_path.is_dir():
-        print(f"❌ Error: Path is not a directory: {skill_path}")
-        return None
+        return PackageResult(False, f"Path is not a directory: {skill_path}")
 
     # Validate SKILL.md exists
     skill_md = skill_path / "SKILL.md"
     if not skill_md.exists():
-        print(f"❌ Error: SKILL.md not found in {skill_path}")
-        return None
+        return PackageResult(False, f"SKILL.md not found in {skill_path}")
 
     # Run validation before packaging
     print("🔍 Validating skill...")
     valid, message = validate_skill(skill_path)
     if not valid:
-        print(f"❌ Validation failed: {message}")
-        print("   Please fix the validation errors before packaging.")
-        return None
+        return PackageResult(False, f"Validation failed: {message}")
     print(f"✅ {message}\n")
 
     # Determine output location
@@ -88,12 +93,10 @@ def package_skill(skill_path, output_dir=None):
                     zipf.write(file_path, arcname)
                     print(f"  Added: {arcname}")
 
-        print(f"\n✅ Successfully packaged skill to: {skill_filename}")
-        return skill_filename
+        return PackageResult(True, f"Successfully packaged skill to: {skill_filename}", skill_filename)
 
     except Exception as e:
-        print(f"❌ Error creating .skill file: {e}")
-        return None
+        return PackageResult(False, f"Error creating .skill file: {e}")
 
 
 def main():
@@ -114,9 +117,12 @@ def main():
 
     result = package_skill(skill_path, output_dir)
 
-    if result:
+    if result.success:
+        print(f"\n✅ {result.message}")
         sys.exit(0)
     else:
+        print(f"❌ {result.message}")
+        print("   Please fix the errors before packaging.")
         sys.exit(1)
 
 

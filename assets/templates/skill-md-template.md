@@ -1,10 +1,22 @@
 ---
 name: {{SKILL_NAME}}
-version: 1.0.0
 description: >
   {{DESCRIPTION}}
 license: MIT
 model: claude-opus-4-5-20251101
+user-invocable: true
+# Uncomment to restrict available tools:
+# allowed-tools:
+#   - Read
+#   - Glob
+#   - Grep
+#   - Bash
+# Uncomment for isolated sub-agent execution:
+# context: fork
+# agent: general-purpose
+metadata:
+  version: 1.0.0
+  author: {{AUTHOR}}
 ---
 
 # {{SKILL_TITLE}}

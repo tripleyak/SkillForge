@@ -2,9 +2,20 @@
 name: skillforge
 description: "Intelligent skill router and creator. Analyzes ANY input to recommend existing skills, improve them, or create new ones. Uses deep iterative analysis with 11 thinking models, regression questioning, evolution lens, and multi-agent synthesis panel. Phase 0 triage ensures you never duplicate existing functionality."
 license: MIT
+model: claude-opus-4-5-20251101
+user-invocable: true
+allowed-tools:
+  - Read
+  - Glob
+  - Grep
+  - Write
+  - Edit
+  - Bash
+  - Task
+  - WebFetch
+  - WebSearch
 metadata:
-  version: 4.0.0
-  model: claude-opus-4-5-20251101
+  version: 4.1.0
   subagent_model: claude-opus-4-5-20251101
   domains: [meta-skill, automation, skill-creation, orchestration, agentic, routing]
   type: orchestrator
@@ -12,7 +23,7 @@ metadata:
   outputs: [SKILL.md, references/, scripts/, SKILL_SPEC.md, recommendations]
 ---
 
-# SkillForge 4.0 - Intelligent Skill Router & Creator
+# SkillForge 4.1 - Intelligent Skill Router & Creator
 
 Analyzes ANY input to find, improve, or create the right skill.
 
@@ -257,19 +268,61 @@ Skills must use only these allowed frontmatter properties:
 | `name` | Yes | Hyphen-case, max 64 chars |
 | `description` | Yes | Max 1024 chars, no angle brackets |
 | `license` | No | MIT, Apache-2.0, etc. |
-| `allowed-tools` | No | Restrict tool access |
-| `metadata` | No | Custom fields (version, model, etc.) |
+| `allowed-tools` | No | Restrict tool access (comma-separated or YAML list) |
+| `model` | No | Specific Claude model (e.g., `claude-sonnet-4-20250514`) |
+| `context` | No | Set to `fork` for isolated sub-agent context |
+| `agent` | No | Agent type when `context: fork` (`Explore`, `Plan`, `general-purpose`) |
+| `hooks` | No | Lifecycle hooks (`PreToolUse`, `PostToolUse`, `Stop`) |
+| `user-invocable` | No | Show in slash menu (default: `true`) |
+| `metadata` | No | Custom fields (version, author, domains, etc.) |
 
+**Basic Example:**
 ```yaml
 ---
 name: my-skill
-description: What this skill does
+description: What this skill does and when to use it
 license: MIT
+model: claude-opus-4-5-20251101
+user-invocable: true
 metadata:
   version: 1.0.0
-  model: claude-opus-4-5-20251101
+  author: your-name
 ---
 ```
+
+**Advanced Example (with forked context and hooks):**
+```yaml
+---
+name: isolated-analyzer
+description: Runs analysis in isolated context with validation hooks
+license: MIT
+model: claude-opus-4-5-20251101
+context: fork
+agent: Explore
+user-invocable: true
+allowed-tools:
+  - Read
+  - Glob
+  - Grep
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "./scripts/validate.sh $TOOL_INPUT"
+metadata:
+  version: 1.0.0
+---
+```
+
+**Field Details:**
+
+| Field | Values | Notes |
+|-------|--------|-------|
+| `context` | `fork` | Creates isolated sub-agent with separate conversation history |
+| `agent` | `Explore`, `Plan`, `general-purpose` | Only valid when `context: fork` |
+| `user-invocable` | `true`, `false` | `false` hides from slash menu but Claude can still auto-invoke |
+| `hooks` | Object | See [Hooks Integration](#hooks-integration-claude-code-v210) section |
 
 ---
 
@@ -309,6 +362,72 @@ Scripts enable skills to be **agentic** - capable of autonomous operation with s
 - Documented in SKILL.md with usage examples
 
 See: [references/script-integration-framework.md](references/script-integration-framework.md)
+
+### Hooks Integration
+
+Skills can define lifecycle hooks for validation, logging, and safety:
+
+```yaml
+---
+name: secure-skill
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "./scripts/validate-input.sh $TOOL_INPUT"
+  PostToolUse:
+    - matcher: "Write"
+      hooks:
+        - type: command
+          command: "./scripts/log-output.sh $TOOL_OUTPUT"
+          once: true
+  Stop:
+    - hooks:
+        - type: command
+          command: "./scripts/cleanup.sh"
+---
+```
+
+**Hook Types:**
+
+| Hook | When Triggered | Use Case |
+|------|----------------|----------|
+| `PreToolUse` | Before tool execution | Input validation, security checks |
+| `PostToolUse` | After tool execution | Output logging, verification |
+| `Stop` | When skill completes | Cleanup, state persistence |
+
+**Hook Configuration:**
+
+| Field | Description |
+|-------|-------------|
+| `matcher` | Tool name pattern to match (e.g., "Bash", "Write", "Bash(python:*)") |
+| `type` | Hook type: `command` (shell) or `prompt` (Claude evaluation) |
+| `command` | Shell command to execute (for `type: command`) |
+| `once` | If `true`, run only once per session (default: `false`) |
+
+**When to Use Hooks:**
+
+| Scenario | Hook Type | Example |
+|----------|-----------|---------|
+| Validate script inputs | PreToolUse | Check parameters before `python scripts/*.py` |
+| Log generated artifacts | PostToolUse | Record files created by Write tool |
+| Security gate | PreToolUse | Block dangerous bash commands |
+| Cleanup temp files | Stop | Remove intermediate artifacts |
+
+**Example: Script Validation Hook**
+
+For skills with scripts, add input validation:
+
+```yaml
+hooks:
+  PreToolUse:
+    - matcher: "Bash(python:scripts/*)"
+      hooks:
+        - type: command
+          command: "python scripts/quick_validate.py . 2>/dev/null || true"
+          once: true
+```
 
 ---
 
@@ -838,7 +957,25 @@ SKILLCREATOR_CONFIG:
 
 ## Changelog
 
-### v3.2.0 (Current)
+### v4.1.0 (Current)
+- **Extended frontmatter support** - Full support for `model`, `context`, `agent`, `hooks`, `user-invocable`
+- Created `scripts/_constants.py` for shared validation constants
+- Updated `scripts/quick_validate.py` with extended property validation
+- Updated `scripts/validate-skill.py` with hooks and agent validation
+- Fixed `scripts/discover_skills.py` to extract version from `metadata.version`
+- Added Hooks Integration section to SKILL.md and script-integration-framework.md
+- Added Forked Context documentation to synthesis-protocol.md
+- Updated skill template with modern best practices
+- Expanded frontmatter requirements table with 10 properties
+
+### v4.0.0
+- **Phase 0 Skill Triage** - Intelligent routing before creation
+- Universal input handling - any prompt works
+- Skill ecosystem scanning with 250+ skills indexed
+- Decision matrix: USE | IMPROVE | CREATE | COMPOSE
+- Renamed from SkillCreator to SkillForge
+
+### v3.2.0
 - Added Script Integration Framework for agentic skills
 - Added 4th Script Agent to synthesis panel (conditional)
 - Added Phase 1D: Automation Analysis

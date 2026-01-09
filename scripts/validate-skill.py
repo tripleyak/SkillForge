@@ -3,7 +3,7 @@
 validate-skill.py - Structural validation for Claude Code skills
 
 Validates that a SKILL.md file meets the requirements defined in
-SkillForge 4.0's quality standards.
+SkillForge 4.1's quality standards.
 
 Usage:
     python validate-skill.py <path-to-skill-directory>
@@ -12,13 +12,12 @@ Usage:
 
 import sys
 import re
-import os
 from pathlib import Path
 from typing import List, Tuple, Dict, Any
 
 
 class SkillValidator:
-    """Validates skill files against SkillForge 4.0 standards."""
+    """Validates skill files against SkillForge 4.1 standards."""
 
     def __init__(self, skill_path: str):
         self.skill_path = Path(skill_path)
@@ -53,26 +52,83 @@ class SkillValidator:
 
     def parse_frontmatter(self) -> bool:
         """Parse YAML frontmatter from skill file."""
-        match = re.match(r'^---\n(.*?)\n---', self.content, re.DOTALL)
+        # Handle both LF and CRLF line endings
+        match = re.match(r'^---\r?\n(.*?)\r?\n---', self.content, re.DOTALL)
         if not match:
             self.errors.append("Missing YAML frontmatter")
             return False
 
+        frontmatter_text = match.group(1)
+
         try:
             import yaml
-            self.frontmatter = yaml.safe_load(match.group(1))
+            parsed = yaml.safe_load(frontmatter_text)
+            # Guard against None or non-dict returns from yaml.safe_load
+            if parsed is None:
+                self.frontmatter = {}
+            elif not isinstance(parsed, dict):
+                self.errors.append(f"Frontmatter must be a YAML dictionary, got {type(parsed).__name__}")
+                return False
+            else:
+                self.frontmatter = parsed
             return True
         except ImportError:
-            # Parse basic fields without yaml library
-            frontmatter_text = match.group(1)
-            for line in frontmatter_text.split('\n'):
-                if ':' in line:
-                    key, value = line.split(':', 1)
-                    self.frontmatter[key.strip()] = value.strip()
+            # Parse basic fields without yaml library (handles folded scalars)
+            self._parse_frontmatter_fallback(frontmatter_text)
             return True
         except Exception as e:
             self.errors.append(f"Failed to parse frontmatter: {e}")
             return False
+
+    def _parse_frontmatter_fallback(self, frontmatter_text: str) -> None:
+        """Fallback YAML parser for when PyYAML is not available."""
+        lines = frontmatter_text.split('\n')
+        current_key = None
+        current_value_lines = []
+        is_folded = False  # Track folded scalar (>)
+        is_literal = False  # Track literal scalar (|)
+
+        for line in lines:
+            # Check for top-level key
+            if ':' in line and not line.startswith(' ') and not line.startswith('\t'):
+                # Save previous key if exists
+                if current_key and (is_folded or is_literal):
+                    self.frontmatter[current_key] = ' '.join(current_value_lines).strip()
+
+                key, value = line.split(':', 1)
+                current_key = key.strip()
+                value = value.strip()
+
+                # Check for folded (>) or literal (|) scalar
+                if value == '>' or value == '>-':
+                    is_folded = True
+                    is_literal = False
+                    current_value_lines = []
+                elif value == '|' or value == '|-':
+                    is_literal = True
+                    is_folded = False
+                    current_value_lines = []
+                else:
+                    is_folded = False
+                    is_literal = False
+                    self.frontmatter[current_key] = value
+                    current_value_lines = []
+
+            elif (is_folded or is_literal) and (line.startswith('  ') or line.startswith('\t')):
+                # Continuation of folded/literal scalar
+                current_value_lines.append(line.strip())
+
+            elif line.startswith('  ') and current_key == 'metadata':
+                # Basic nested parsing for metadata
+                if 'metadata' not in self.frontmatter or not isinstance(self.frontmatter['metadata'], dict):
+                    self.frontmatter['metadata'] = {}
+                if ':' in line:
+                    nested_key, nested_value = line.strip().split(':', 1)
+                    self.frontmatter['metadata'][nested_key.strip()] = nested_value.strip()
+
+        # Save final key if it was a folded/literal scalar
+        if current_key and (is_folded or is_literal) and current_value_lines:
+            self.frontmatter[current_key] = ' '.join(current_value_lines).strip()
 
     def check(self, name: str, condition: bool, error_msg: str = None, warning: bool = False):
         """Run a check and record result."""
@@ -89,43 +145,285 @@ class SkillValidator:
 
     def validate_frontmatter(self):
         """Validate frontmatter fields."""
-        required_fields = ["name", "version", "description", "license", "model"]
+        # Import or define constants
+        try:
+            from _constants import (
+                ALLOWED_PROPERTIES, REQUIRED_PROPERTIES, RECOMMENDED_PROPERTIES,
+                VALID_AGENT_TYPES, NAME_MAX_LENGTH, DESCRIPTION_MAX_LENGTH,
+                SEMVER_REGEX, NAME_REGEX
+            )
+        except ImportError:
+            ALLOWED_PROPERTIES = {
+                'name', 'description', 'license', 'allowed-tools', 'metadata',
+                'model', 'context', 'agent', 'hooks', 'user-invocable'
+            }
+            REQUIRED_PROPERTIES = {'name', 'description'}
+            RECOMMENDED_PROPERTIES = {'license'}
+            VALID_AGENT_TYPES = {'Explore', 'Plan', 'general-purpose'}
+            NAME_MAX_LENGTH = 64
+            DESCRIPTION_MAX_LENGTH = 1024
+            SEMVER_REGEX = r'^\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?(\+[a-zA-Z0-9.]+)?$'
+            NAME_REGEX = r'^[a-z][a-z0-9-]*[a-z0-9]$|^[a-z]$'
 
-        for field in required_fields:
+        # Check required fields
+        for field in REQUIRED_PROPERTIES:
             self.check(
                 f"frontmatter.{field}",
                 field in self.frontmatter and self.frontmatter[field],
                 f"Missing required frontmatter field: {field}"
             )
 
-        # Check name format (kebab-case)
-        if "name" in self.frontmatter:
-            name = self.frontmatter["name"]
+        # Warn about recommended fields (not required)
+        for field in RECOMMENDED_PROPERTIES:
             self.check(
-                "frontmatter.name.format",
-                re.match(r'^[a-z][a-z0-9-]*$', str(name)),
-                f"Skill name should be kebab-case: {name}"
-            )
-
-        # Check version format (semver)
-        if "version" in self.frontmatter:
-            version = self.frontmatter["version"]
-            self.check(
-                "frontmatter.version.format",
-                re.match(r'^\d+\.\d+\.\d+', str(version)),
-                f"Version should be semver format: {version}"
-            )
-
-        # Check description length
-        if "description" in self.frontmatter:
-            desc = str(self.frontmatter["description"])
-            word_count = len(desc.split())
-            self.check(
-                "frontmatter.description.length",
-                word_count >= 10,
-                f"Description too short ({word_count} words, minimum 10)",
+                f"frontmatter.{field}",
+                field in self.frontmatter,
+                f"Recommended frontmatter field missing: {field}",
                 warning=True
             )
+
+        # Validate allowed properties
+        unexpected_keys = set(self.frontmatter.keys()) - ALLOWED_PROPERTIES
+        if unexpected_keys:
+            self.check(
+                "frontmatter.allowed_properties",
+                False,
+                f"Unexpected frontmatter properties: {', '.join(sorted(unexpected_keys))}. "
+                f"Allowed: {', '.join(sorted(ALLOWED_PROPERTIES))}"
+            )
+
+        # Validate name field (format and length)
+        if "name" in self.frontmatter:
+            name = str(self.frontmatter["name"])
+            self.check(
+                "frontmatter.name.format",
+                re.match(NAME_REGEX, name) and '--' not in name,
+                f"Skill name should be hyphen-case (start with letter, no consecutive hyphens): {name}"
+            )
+            self.check(
+                "frontmatter.name.length",
+                len(name) <= NAME_MAX_LENGTH,
+                f"Skill name too long ({len(name)} chars, max {NAME_MAX_LENGTH})"
+            )
+
+        # Validate description field (no angle brackets, length limit)
+        if "description" in self.frontmatter:
+            desc = str(self.frontmatter["description"])
+            self.check(
+                "frontmatter.description.characters",
+                '<' not in desc and '>' not in desc,
+                "Description cannot contain angle brackets (< or >)"
+            )
+            self.check(
+                "frontmatter.description.length",
+                len(desc) <= DESCRIPTION_MAX_LENGTH,
+                f"Description too long ({len(desc)} chars, max {DESCRIPTION_MAX_LENGTH})",
+                warning=True
+            )
+
+        # Check version location (should be in metadata, not root)
+        if "version" in self.frontmatter:
+            self.check(
+                "frontmatter.version.location",
+                False,
+                "'version' should be under 'metadata', not at root level. "
+                "Move to metadata.version for better organization.",
+                warning=True
+            )
+
+        # Validate version format if in metadata
+        if "metadata" in self.frontmatter and isinstance(self.frontmatter["metadata"], dict):
+            version = self.frontmatter["metadata"].get("version")
+            if version:
+                self.check(
+                    "metadata.version.format",
+                    re.match(SEMVER_REGEX, str(version)),
+                    f"Version should be semver format (e.g., 1.0.0 or 1.0.0-beta.1): {version}",
+                    warning=True
+                )
+
+        # Validate context field - warning not error for future-proofing
+        if "context" in self.frontmatter:
+            context = self.frontmatter["context"]
+            self.check(
+                "frontmatter.context.value",
+                context == "fork",
+                f"context should be 'fork' (got '{context}'). Other values may be added in future.",
+                warning=True
+            )
+
+        # Validate agent field
+        if "agent" in self.frontmatter:
+            agent = self.frontmatter["agent"]
+            self.check(
+                "frontmatter.agent.value",
+                agent in VALID_AGENT_TYPES,
+                f"agent should be one of {VALID_AGENT_TYPES} (got '{agent}')",
+                warning=True
+            )
+            # Agent requires context: fork
+            if "context" not in self.frontmatter or self.frontmatter.get("context") != "fork":
+                self.check(
+                    "frontmatter.agent.requires_context",
+                    False,
+                    "'agent' field requires 'context: fork' to be set",
+                    warning=True
+                )
+
+        # Validate user-invocable field
+        if "user-invocable" in self.frontmatter:
+            value = self.frontmatter["user-invocable"]
+            self.check(
+                "frontmatter.user-invocable.type",
+                isinstance(value, bool),
+                f"user-invocable must be a boolean (got {type(value).__name__})"
+            )
+
+        # Validate allowed-tools field
+        self.validate_allowed_tools()
+
+        # Validate hooks field
+        self.validate_hooks()
+
+    def validate_allowed_tools(self):
+        """Validate allowed-tools field if present."""
+        if "allowed-tools" not in self.frontmatter:
+            return
+
+        tools_value = self.frontmatter["allowed-tools"]
+
+        # Parse as list or comma-separated string
+        if isinstance(tools_value, str):
+            tools = [t.strip() for t in tools_value.split(",")]
+        elif isinstance(tools_value, list):
+            tools = [str(t) for t in tools_value]
+        else:
+            self.check(
+                "frontmatter.allowed-tools.type",
+                False,
+                f"allowed-tools should be string or list (got {type(tools_value).__name__})"
+            )
+            return
+
+        # Import known tools
+        try:
+            from _constants import KNOWN_TOOLS
+        except ImportError:
+            KNOWN_TOOLS = {
+                'Read', 'Glob', 'Grep', 'Write', 'Edit',
+                'Bash', 'Task', 'WebFetch', 'WebSearch',
+                'TodoWrite', 'NotebookEdit', 'AskUserQuestion'
+            }
+
+        # Check for unknown tools (warning only - custom tools may exist)
+        unknown_tools = [t for t in tools if t not in KNOWN_TOOLS]
+        if unknown_tools:
+            self.check(
+                "frontmatter.allowed-tools.values",
+                False,
+                f"Unknown tool(s): {unknown_tools}. Known tools: {sorted(KNOWN_TOOLS)}. "
+                "This may be intentional for custom tools.",
+                warning=True
+            )
+
+    def validate_hooks(self):
+        """Validate hooks object structure if present."""
+        if "hooks" not in self.frontmatter:
+            return
+
+        hooks = self.frontmatter["hooks"]
+
+        # Hooks must be a dictionary
+        if not isinstance(hooks, dict):
+            self.check(
+                "frontmatter.hooks.type",
+                False,
+                f"hooks must be an object/dictionary (got {type(hooks).__name__})"
+            )
+            return
+
+        # Import valid hook events
+        try:
+            from _constants import VALID_HOOK_EVENTS, VALID_HOOK_TYPES
+        except ImportError:
+            VALID_HOOK_EVENTS = {'PreToolUse', 'PostToolUse', 'Stop'}
+            VALID_HOOK_TYPES = {'command', 'prompt'}
+
+        # Validate each hook event
+        for hook_name, hook_config in hooks.items():
+            # Check hook name is valid
+            self.check(
+                f"frontmatter.hooks.{hook_name}.name",
+                hook_name in VALID_HOOK_EVENTS,
+                f"Unknown hook event: '{hook_name}'. Valid events: {VALID_HOOK_EVENTS}"
+            )
+
+            # Hook config should be a list
+            if not isinstance(hook_config, list):
+                self.check(
+                    f"frontmatter.hooks.{hook_name}.type",
+                    False,
+                    f"Hook '{hook_name}' config should be a list of matchers"
+                )
+                continue
+
+            # Validate each matcher in the hook
+            for i, matcher_config in enumerate(hook_config):
+                if not isinstance(matcher_config, dict):
+                    self.check(
+                        f"frontmatter.hooks.{hook_name}[{i}].type",
+                        False,
+                        f"Hook matcher should be an object with 'matcher' and 'hooks' keys"
+                    )
+                    continue
+
+                # PreToolUse and PostToolUse require matcher field
+                if hook_name in {'PreToolUse', 'PostToolUse'}:
+                    self.check(
+                        f"frontmatter.hooks.{hook_name}[{i}].matcher",
+                        "matcher" in matcher_config,
+                        f"'{hook_name}' hook requires 'matcher' field",
+                        warning=True
+                    )
+
+                # Validate inner hooks array
+                inner_hooks = matcher_config.get("hooks", [])
+                if not isinstance(inner_hooks, list):
+                    self.check(
+                        f"frontmatter.hooks.{hook_name}[{i}].hooks.type",
+                        False,
+                        "Inner 'hooks' should be a list"
+                    )
+                    continue
+
+                for j, inner_hook in enumerate(inner_hooks):
+                    if not isinstance(inner_hook, dict):
+                        continue
+
+                    # Validate hook type
+                    hook_type = inner_hook.get("type")
+                    if hook_type:
+                        self.check(
+                            f"frontmatter.hooks.{hook_name}[{i}].hooks[{j}].type",
+                            hook_type in VALID_HOOK_TYPES,
+                            f"Hook type should be one of {VALID_HOOK_TYPES} (got '{hook_type}')"
+                        )
+
+                    # command type requires command field
+                    if hook_type == "command":
+                        self.check(
+                            f"frontmatter.hooks.{hook_name}[{i}].hooks[{j}].command",
+                            "command" in inner_hook and inner_hook["command"],
+                            "Hook with type 'command' requires non-empty 'command' field"
+                        )
+
+                    # Validate 'once' field if present
+                    if "once" in inner_hook:
+                        self.check(
+                            f"frontmatter.hooks.{hook_name}[{i}].hooks[{j}].once",
+                            isinstance(inner_hook["once"], bool),
+                            "'once' field must be a boolean"
+                        )
 
     def validate_triggers(self):
         """Validate trigger phrases section."""
@@ -306,7 +604,11 @@ class SkillValidator:
 
         script_name = script_path.name
 
-        # Check for shebang and docstring
+        # Skip private modules (starting with _) for CLI-related checks
+        # They are helper/config modules, not runnable scripts
+        is_private_module = script_name.startswith('_')
+
+        # Check for shebang and docstring (applies to all Python files)
         has_shebang = content.strip().startswith('#!/usr/bin/env python3')
         has_docstring = '"""' in content[:500] or "'''" in content[:500]
         self.check(
@@ -315,6 +617,10 @@ class SkillValidator:
             f"Script {script_name} should have shebang and docstring",
             warning=True
         )
+
+        # Skip CLI-related checks for private modules
+        if is_private_module:
+            return
 
         # Check for argparse usage (if main function exists)
         has_main = "def main():" in content or 'if __name__' in content
@@ -346,11 +652,11 @@ class SkillValidator:
         )
 
         # Check for result class or validation result pattern
+        # Matches: Result, ValidationResult, return (True/False, or return True/False,
         has_result_pattern = (
             "Result" in content or
             "ValidationResult" in content or
-            "return (True" in content or
-            "return (False" in content
+            re.search(r'return\s*\(?\s*(True|False)\s*,', content) is not None
         )
         self.check(
             f"script.{script_name}.result_pattern",
