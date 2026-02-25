@@ -1,10 +1,7 @@
 ---
 name: {{SKILL_NAME}}
-version: 1.0.0
 description: >
   {{DESCRIPTION}}
-license: MIT
-model: claude-opus-4-6
 ---
 
 # {{SKILL_TITLE}}
@@ -62,6 +59,24 @@ After execution:
 
 1. **{{EXTENSION_1_NAME}}:** {{EXTENSION_1_DESC}}
 2. **{{EXTENSION_2_NAME}}:** {{EXTENSION_2_DESC}}
+
+## Directory Structure
+
+```
+{{SKILL_NAME}}/
+├── SKILL.md              # Main skill definition (this file)
+├── references/           # Loaded into context to inform Claude's thinking
+│   └── {{REF_1_FILE}}
+├── assets/               # Used in output, NEVER loaded into context
+│   └── templates/        # Templates, boilerplate, starter files
+│       └── {{TEMPLATE_FILE}}
+└── scripts/              # Executable automation and validation
+    └── {{SCRIPT_FILE}}
+```
+
+> **references/** = knowledge for Claude to read and reason with.
+> **assets/** = raw materials for Claude to copy, adapt, or include in output.
+> Never put output templates in references. Never put background knowledge in assets.
 
 ## References
 

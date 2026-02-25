@@ -88,8 +88,14 @@ class SkillValidator:
             return False
 
     def validate_frontmatter(self):
-        """Validate frontmatter fields."""
-        required_fields = ["name", "version", "description", "license", "model"]
+        """Validate frontmatter fields.
+
+        New simplified standard: only 'name' and 'description' are required.
+        Optional fields: 'license', 'allowed-tools', 'metadata',
+        'disable-model-invocation'.
+        Fields like 'version', 'model', 'type' belong in metadata if needed.
+        """
+        required_fields = ["name", "description"]
 
         for field in required_fields:
             self.check(
@@ -98,25 +104,36 @@ class SkillValidator:
                 f"Missing required frontmatter field: {field}"
             )
 
+        # Check for disallowed top-level fields
+        allowed_top_level = {
+            "name", "description", "license", "allowed-tools",
+            "metadata", "disable-model-invocation",
+        }
+        unexpected = set(self.frontmatter.keys()) - allowed_top_level
+        if unexpected:
+            self.check(
+                "frontmatter.unexpected_keys",
+                False,
+                f"Unexpected top-level frontmatter keys: {', '.join(sorted(unexpected))}. "
+                f"Move to 'metadata' block or remove. Allowed: {', '.join(sorted(allowed_top_level))}",
+                warning=True,
+            )
+
         # Check name format (kebab-case)
         if "name" in self.frontmatter:
-            name = self.frontmatter["name"]
+            name = str(self.frontmatter["name"])
             self.check(
                 "frontmatter.name.format",
-                re.match(r'^[a-z][a-z0-9-]*$', str(name)),
+                bool(re.match(r'^[a-z][a-z0-9-]*$', name)),
                 f"Skill name should be kebab-case: {name}"
             )
-
-        # Check version format (semver)
-        if "version" in self.frontmatter:
-            version = self.frontmatter["version"]
             self.check(
-                "frontmatter.version.format",
-                re.match(r'^\d+\.\d+\.\d+', str(version)),
-                f"Version should be semver format: {version}"
+                "frontmatter.name.length",
+                len(name) <= 64,
+                f"Skill name exceeds 64 character limit ({len(name)} chars)"
             )
 
-        # Check description length
+        # Check description constraints
         if "description" in self.frontmatter:
             desc = str(self.frontmatter["description"])
             word_count = len(desc.split())
@@ -125,6 +142,16 @@ class SkillValidator:
                 word_count >= 10,
                 f"Description too short ({word_count} words, minimum 10)",
                 warning=True
+            )
+            self.check(
+                "frontmatter.description.max_length",
+                len(desc) <= 1024,
+                f"Description exceeds 1024 character limit ({len(desc)} chars)"
+            )
+            self.check(
+                "frontmatter.description.no_angle_brackets",
+                '<' not in desc and '>' not in desc,
+                "Description cannot contain angle brackets (< or >)"
             )
 
     def validate_triggers(self):
