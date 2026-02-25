@@ -250,7 +250,7 @@ python scripts/init_skill.py my-skill --path ~/.codex/skills
 
 ![Closing](assets/images/13-closing.png)
 
-**SkillForge is a systematic methodology for quality.**
+**SkillForge is a systematic methodology for quality and repeatability.**
 
 By codifying expert analysis, rigorous specification, and multi-agent peer review into a fully autonomous system, SkillForge provides a blueprint for building the next generation of robust, reliable, and evolution-aware AI skills.
 
