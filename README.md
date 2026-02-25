@@ -1,4 +1,4 @@
-# SkillForge v5.0
+# SkillForge v5.1
 
 **From Art to Engineering: A Manifesto for AI Skill Creation.**
 
@@ -24,11 +24,13 @@ SkillForge is a methodology where rigor is integrated into every step of the cre
 
 ---
 
-## What's New in v5.0
+## What's New in v5.1
 
-### Context-Efficient Redesign
+v5.1 builds on the v5.0 context-efficient redesign and adds stronger frontmatter support, hooks guidance, validation coverage, and packaging safety.
 
-v5.0 is built around a single insight: **the context window is a public good.** Every line in SKILL.md competes with the user's actual work. SkillForge now practices what it preaches.
+### Context-Efficient Foundation (v5.0)
+
+The foundation from v5.0 remains: **the context window is a public good.** Every line in SKILL.md competes with the user's actual work.
 
 - **SKILL.md slimmed from 872 to 313 lines** (64% reduction)
 - Deep dives moved to `references/` where they're loaded only when needed
@@ -64,6 +66,24 @@ python scripts/init_skill.py my-new-skill --path ~/.codex/skills
 ### Iteration as a Formal Step
 
 Iteration is now built into Phase 3. Skills improve through real usage, not just synthesis panel review.
+
+### Extended Frontmatter + Hooks (v5.1)
+
+v5.1 expands skill metadata support and documentation:
+
+- Extended frontmatter coverage for `model`, `context`, `agent`, `hooks`, and `user-invocable`
+- New hooks integration guidance for `PreToolUse`, `PostToolUse`, and `Stop`
+- Template updates for modern skill authoring defaults
+
+### Validation + Packaging Hardening (v5.1)
+
+v5.1 adds stronger guardrails for safe distribution:
+
+- Shared validation constants across validation scripts
+- Improved frontmatter parsing and stricter structure checks
+- `.skillignore` enforcement restored in packaging
+- Docs safety checker to flag unsafe command interpolation patterns
+- Regression test coverage for packaging exclusions
 
 ---
 
@@ -272,6 +292,11 @@ MIT License — see [LICENSE](LICENSE)
 - Updated scaffold and validation scripts to use Codex path examples
 - Kept full backward compatibility with Claude Code paths
 - Added additive README visuals for evolution mandate, agentic capabilities, and directory structure
+- Added extended frontmatter support documentation (`model`, `context`, `agent`, `hooks`, `user-invocable`)
+- Added hook integration guidance in core docs and references
+- Restored `.skillignore` enforcement in packaging workflow
+- Added docs safety check script for unsafe tool payload interpolation
+- Added packaging regression test for `.skillignore` exclusions
 
 ### v5.0.0
 - Context-efficient redesign: SKILL.md slimmed from 872 to 313 lines (64% reduction)
