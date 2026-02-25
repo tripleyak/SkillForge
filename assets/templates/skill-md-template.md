@@ -4,7 +4,7 @@ version: 1.0.0
 description: >
   {{DESCRIPTION}}
 license: MIT
-model: claude-opus-4-5-20251101
+model: claude-opus-4-6
 ---
 
 # {{SKILL_TITLE}}
