@@ -1,7 +1,7 @@
 ---
 name: skillforge
 description: >-
-  Intelligent skill router and creator for Claude Code. Analyzes any input to
+  Intelligent skill router and creator for Claude Code and Codex. Analyzes any input to
   recommend existing skills, improve them, or create new ones from scratch.
   Uses deep iterative analysis with 11 thinking models, regression questioning,
   evolution scoring, and multi-agent synthesis panel. Phase 0 triage prevents
@@ -83,7 +83,7 @@ ANY USER INPUT
     v
 +---------------------------------------------------+
 | Phase 4: SYNTHESIS PANEL                          |
-| - 3-4 Opus agents review independently            |
+| - 3-4 reviewer agents assess independently        |
 | - Unanimous approval required                     |
 | - If rejected -> loop back with feedback          |
 +---------------------------------------------------+
@@ -111,6 +111,15 @@ Production-Ready Agentic Skill
 | `SkillForge --quick {goal}` | Reduced depth (not recommended) |
 | `SkillForge --triage {input}` | Run Phase 0 triage only |
 | `SkillForge --improve {skill}` | Improvement mode for existing skill |
+
+---
+
+## Host Compatibility
+
+| Host | Skill Directory | Notes |
+|------|-----------------|-------|
+| Codex | `~/.codex/skills/` or `$CODEX_HOME/skills/` | Preferred for Codex workflows |
+| Claude Code | `~/.claude/skills/` | Fully supported for existing users |
 
 ---
 
@@ -145,6 +154,7 @@ python scripts/triage_skill_request.py "create a skill for payments" --json
 # Rebuild skill index (after installing new skills)
 python scripts/discover_skills.py
 # Index: ~/.cache/skillrecommender/skill_index.json
+# Scans both ~/.claude/skills and ~/.codex/skills
 ```
 
 ### Routing After Triage
@@ -152,7 +162,7 @@ python scripts/discover_skills.py
 - **USE_EXISTING**: Exit early, recommend skill
 - **IMPROVE_EXISTING**: Load skill -> Phase 1 analyzes gaps -> Phases 2-4 enhance
 - **CREATE_NEW**: Full pipeline (Phase 1 -> 2 -> 3 -> 4)
-- **COMPOSE**: Suggest SkillComposer for multi-skill chain
+- **COMPOSE**: Suggest a short multi-skill chain
 - **CLARIFY**: Pause for user input
 
 ---
@@ -203,7 +213,7 @@ Key reference: [Iteration Guide](references/iteration-guide.md) -- self-review s
 
 ### Phase 4: Multi-Agent Synthesis
 
-3-4 Opus agents review independently with distinct lenses:
+3-4 reviewer agents assess independently with distinct lenses:
 
 | Agent | Focus |
 |-------|-------|
@@ -222,8 +232,13 @@ Key references:
 
 ## Skill Output Structure
 
+| Host | Path |
+|------|------|
+| Codex | `~/.codex/skills/{skill-name}/` |
+| Claude Code | `~/.claude/skills/{skill-name}/` |
+
 ```
-~/.claude/skills/{skill-name}/
+{skill-root}/
   SKILL.md              # Main entry point (required)
   references/           # Deep documentation (optional)
   assets/templates/     # Output templates (optional)
@@ -241,13 +256,13 @@ Key references:
 
 ```bash
 # Quick validation (required before packaging)
-python scripts/quick_validate.py ~/.claude/skills/my-skill/
+python scripts/quick_validate.py ~/.codex/skills/my-skill/
 
 # Full structural validation
-python scripts/validate-skill.py ~/.claude/skills/my-skill/
+python scripts/validate-skill.py ~/.codex/skills/my-skill/
 
 # Package for distribution
-python scripts/package_skill.py ~/.claude/skills/my-skill/ ./dist
+python scripts/package_skill.py ~/.codex/skills/my-skill/ ./dist
 ```
 
 ---

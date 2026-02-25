@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-init_skill.py - Scaffold a new Claude Code skill
+init_skill.py - Scaffold a new agent skill (Claude Code/Codex)
 
 Creates a complete skill directory with SKILL.md template, references/,
 scripts/, and assets/ subdirectories pre-populated with starter files.
@@ -11,7 +11,7 @@ Usage:
 Examples:
     python init_skill.py code-reviewer
     python init_skill.py deploy-helper --path ~/my-skills
-    python init_skill.py test-generator --path ~/.claude/skills
+    python init_skill.py test-generator --path ~/.codex/skills
 
 Exit Codes:
     0  - Success
@@ -328,7 +328,9 @@ Next steps:
   2. Add domain knowledge to references/
   3. Add automation scripts to scripts/ (optional)
   4. Validate: python validate-skill.py {skill_dir}
-  5. Install: copy to ~/.claude/skills/{name}/
+  5. Install:
+     - Codex: copy to $CODEX_HOME/skills/{name}/ (or ~/.codex/skills/{name}/)
+     - Claude Code: copy to ~/.claude/skills/{name}/
 
 Tips:
   - Keep SKILL.md under 500 lines (hard limit: 1000)
@@ -344,13 +346,13 @@ Tips:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Scaffold a new Claude Code skill",
+        description="Scaffold a new skill for Codex or Claude Code",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   %(prog)s code-reviewer
   %(prog)s deploy-helper --path ~/my-skills
-  %(prog)s test-generator --path ~/.claude/skills
+  %(prog)s test-generator --path ~/.codex/skills
         """
     )
 

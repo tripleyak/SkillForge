@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-validate-skill.py - Structural validation for Claude Code skills
+validate-skill.py - Structural validation for agent skills (Claude Code/Codex)
 
 Validates that a SKILL.md file meets the requirements defined in
 SkillForge 4.0's quality standards.
 
 Usage:
     python validate-skill.py <path-to-skill-directory>
-    python validate-skill.py ~/.claude/skills/my-skill/
+    python validate-skill.py ~/.codex/skills/my-skill/
 """
 
 import sys
@@ -479,7 +479,7 @@ def main():
     """Main entry point."""
     if len(sys.argv) < 2:
         print("Usage: python validate-skill.py <path-to-skill-directory>")
-        print("Example: python validate-skill.py ~/.claude/skills/my-skill/")
+        print("Example: python validate-skill.py ~/.codex/skills/my-skill/")
         sys.exit(1)
 
     skill_path = sys.argv[1]

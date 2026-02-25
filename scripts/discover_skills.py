@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-discover_skills.py - Scan all skill sources and build a searchable index
+discover_skills.py - Scan skill sources and build a searchable index
 
 Part of the skillrecommender skill.
 
 Responsibilities:
-- Scan custom skills, superpowers, and plugin marketplaces
+- Scan custom skills (Codex + Claude), superpowers, and plugin marketplaces
 - Extract skill metadata (name, triggers, keywords, domain)
 - Build searchable JSON index for fast matching
 
@@ -60,34 +60,40 @@ class Result:
 
 SKILL_SOURCES = [
     {
-        "name": "custom",
-        "path": Path.home() / ".claude" / "skills",
-        "pattern": "*/skill.md",
+        "name": "codex-custom",
+        "path": Path.home() / ".codex" / "skills",
+        "patterns": ["*/SKILL.md", "*/skill.md"],
         "priority": 1
+    },
+    {
+        "name": "claude-custom",
+        "path": Path.home() / ".claude" / "skills",
+        "patterns": ["*/SKILL.md", "*/skill.md"],
+        "priority": 2
     },
     {
         "name": "superpowers",
         "path": Path.home() / ".claude" / "plugins" / "cache" / "superpowers" / "skills",
         "pattern": "*/*.md",
-        "priority": 2
+        "priority": 3
     },
     {
         "name": "anthropic-agent-skills",
         "path": Path.home() / ".claude" / "plugins" / "marketplaces" / "anthropic-agent-skills",
         "pattern": "skills/*/skill.md",
-        "priority": 3
+        "priority": 4
     },
     {
         "name": "claude-code-workflows",
         "path": Path.home() / ".claude" / "plugins" / "marketplaces" / "claude-code-workflows",
         "pattern": "plugins/*/skills/*/skill.md",
-        "priority": 4
+        "priority": 5
     },
     {
         "name": "claude-code-plugins",
         "path": Path.home() / ".claude" / "plugins" / "marketplaces" / "claude-code-plugins",
         "pattern": "*/skills/*/skill.md",
-        "priority": 5
+        "priority": 6
     }
 ]
 
@@ -277,17 +283,34 @@ def discover_skills(verbose: bool = False) -> Result:
             print(f"Scanning {source['name']}: {source_path}", file=sys.stderr)
 
         # Find skill files
-        pattern_parts = source["pattern"].split("/")
+        source_patterns = source.get("patterns")
+        if not source_patterns:
+            source_patterns = [source["pattern"]]
 
-        if len(pattern_parts) == 2:
-            # Simple pattern like */skill.md
-            skill_files = list(source_path.glob(source["pattern"]))
-        else:
-            # Complex pattern - use recursive glob
-            skill_files = list(source_path.glob("**/*.md"))
-            skill_files = [f for f in skill_files if "skill" in f.name.lower()]
+        skill_files = []
+        for pattern in source_patterns:
+            pattern_parts = pattern.split("/")
 
+            if len(pattern_parts) == 2:
+                # Simple pattern like */SKILL.md
+                skill_files.extend(list(source_path.glob(pattern)))
+            else:
+                # Complex pattern - use recursive glob
+                found = list(source_path.glob("**/*.md"))
+                found = [f for f in found if "skill" in f.name.lower()]
+                skill_files.extend(found)
+
+        # Deduplicate files across multiple patterns
+        unique_files = []
+        seen = set()
         for skill_file in skill_files:
+            key = str(skill_file.resolve())
+            if key in seen:
+                continue
+            seen.add(key)
+            unique_files.append(skill_file)
+
+        for skill_file in unique_files:
             skill_data = parse_skill_file(skill_file, source["name"], source["priority"])
             if skill_data:
                 skills.append(skill_data)

@@ -58,7 +58,7 @@ A new design concept for matching instruction specificity to task fragility:
 New `init_skill.py` creates rich skill templates with TODO placeholders, organizational pattern suggestions, and example resource files:
 
 ```bash
-python scripts/init_skill.py my-new-skill --path ~/.claude/skills
+python scripts/init_skill.py my-new-skill --path ~/.codex/skills
 ```
 
 ### Iteration as a Formal Step
@@ -181,7 +181,7 @@ skillforge/
     └── package_skill.py
 ```
 
-**Key distinction:** `references/` = loaded into context to inform Claude's thinking. `assets/` = used in output, never loaded into context.
+**Key distinction:** `references/` = loaded into context to inform the model's reasoning. `assets/` = used in output, never loaded into context.
 
 ---
 
@@ -192,6 +192,12 @@ skillforge/
 ```bash
 # Install (excludes repo-only files like README.md automatically)
 git clone https://github.com/tripleyak/SkillForge.git /tmp/skillforge
+
+# Codex install
+cp -r /tmp/skillforge ~/.codex/skills/skillforge
+rm -rf ~/.codex/skills/skillforge/{README.md,LICENSE,.git,.gitignore,.skillignore}
+
+# Claude Code install
 cp -r /tmp/skillforge ~/.claude/skills/skillforge
 rm -rf ~/.claude/skills/skillforge/{README.md,LICENSE,.git,.gitignore,.skillignore}
 
@@ -208,7 +214,7 @@ create skill for {purpose}
 skillforge --plan-only
 
 # Scaffold a new skill
-python scripts/init_skill.py my-skill --path ~/.claude/skills
+python scripts/init_skill.py my-skill --path ~/.codex/skills
 ```
 
 > **Note:** `README.md`, `LICENSE`, and `assets/images/` are for GitHub browsing only. They are excluded from `.skill` packages via `.skillignore` and should not be copied into your skills directory.
@@ -217,7 +223,7 @@ python scripts/init_skill.py my-skill --path ~/.claude/skills
 
 ## Requirements
 
-- Claude Code CLI
+- Codex CLI or Claude Code CLI
 - Python 3.8+ (for validation and scaffold scripts)
 
 ---
@@ -242,7 +248,13 @@ MIT License — see [LICENSE](LICENSE)
 
 ## Changelog
 
-### v5.0.0 (Current)
+### v5.1.0 (Current)
+- Added Codex compatibility to SKILL.md instructions and host paths
+- Added Codex skill source discovery (`~/.codex/skills`) with uppercase `SKILL.md` support
+- Updated scaffold and validation scripts to use Codex path examples
+- Kept full backward compatibility with Claude Code paths
+
+### v5.0.0
 - Context-efficient redesign: SKILL.md slimmed from 872 to 313 lines (64% reduction)
 - Simplified frontmatter to `name` + `description` only
 - Triggers moved into `description` for pre-load routing

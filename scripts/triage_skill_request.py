@@ -712,7 +712,7 @@ def format_output(result: Result) -> str:
     if action == Action.USE_EXISTING:
         skills = details.get("recommended_skills", [])
         lines.append(f"  Invoke existing skill: {skills[0] if skills else 'unknown'}")
-        lines.append(f"  Example: /{skills[0] if skills else 'skill-name'}")
+        lines.append(f"  Example: use skill '{skills[0] if skills else 'skill-name'}' in your host")
 
     elif action == Action.IMPROVE_EXISTING:
         target = details.get("target_skill", "unknown")
@@ -727,7 +727,7 @@ def format_output(result: Result) -> str:
     elif action == Action.COMPOSE:
         chain = details.get("recommended_chain", [])
         lines.append(f"  Compose skill chain: {' → '.join(chain)}")
-        lines.append(f"  Use SkillComposer to orchestrate")
+        lines.append(f"  Run the chain in order and keep the scope minimal")
 
     elif action == Action.CLARIFY:
         suggestion = details.get("suggested_action", "Clarify your intent")

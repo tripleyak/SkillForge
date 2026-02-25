@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-quick_validate.py - Fast validation for Claude Code skills
+quick_validate.py - Fast validation for agent skills (Claude Code/Codex)
 
 Validates that a skill meets the packaging requirements for distribution.
 This is the minimal validation required before packaging with package_skill.py.
 
 Usage:
     python quick_validate.py <skill_directory>
-    python quick_validate.py ~/.claude/skills/my-skill/
+    python quick_validate.py ~/.codex/skills/my-skill/
 """
 
 import sys
@@ -124,7 +124,7 @@ def main():
     if len(sys.argv) != 2:
         print("Usage: python quick_validate.py <skill_directory>")
         print("\nExample:")
-        print("  python quick_validate.py ~/.claude/skills/my-skill/")
+        print("  python quick_validate.py ~/.codex/skills/my-skill/")
         sys.exit(1)
 
     skill_path = sys.argv[1]
