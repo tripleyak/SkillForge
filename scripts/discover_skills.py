@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-discover_skills.py - Scan skill sources and build a searchable index
+discover_skills.py - Scan all skill sources and build a searchable index
 
 Part of the skillrecommender skill.
 
 Responsibilities:
-- Scan custom skills (Codex + Claude), superpowers, and plugin marketplaces
+- Scan custom skills, superpowers, and plugin marketplaces
 - Extract skill metadata (name, triggers, keywords, domain)
 - Build searchable JSON index for fast matching
 
@@ -28,6 +28,15 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional, Any
+
+# Import shared constants (optional - used for validation if available)
+try:
+    from _constants import SEMVER_REGEX, VALID_AGENT_TYPES
+    HAS_CONSTANTS = True
+except ImportError:
+    HAS_CONSTANTS = False
+    SEMVER_REGEX = r'^\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?(\+[a-zA-Z0-9.]+)?$'
+    VALID_AGENT_TYPES = {'Explore', 'Plan', 'general-purpose'}
 
 
 # ===========================================================================
@@ -60,40 +69,34 @@ class Result:
 
 SKILL_SOURCES = [
     {
-        "name": "codex-custom",
-        "path": Path.home() / ".codex" / "skills",
-        "patterns": ["*/SKILL.md", "*/skill.md"],
-        "priority": 1
-    },
-    {
-        "name": "claude-custom",
+        "name": "custom",
         "path": Path.home() / ".claude" / "skills",
-        "patterns": ["*/SKILL.md", "*/skill.md"],
-        "priority": 2
+        "pattern": "*/[Ss][Kk][Ii][Ll][Ll].[Mm][Dd]",  # Case-insensitive: SKILL.md or skill.md
+        "priority": 1
     },
     {
         "name": "superpowers",
         "path": Path.home() / ".claude" / "plugins" / "cache" / "superpowers" / "skills",
         "pattern": "*/*.md",
-        "priority": 3
+        "priority": 2
     },
     {
         "name": "anthropic-agent-skills",
         "path": Path.home() / ".claude" / "plugins" / "marketplaces" / "anthropic-agent-skills",
         "pattern": "skills/*/skill.md",
-        "priority": 4
+        "priority": 3
     },
     {
         "name": "claude-code-workflows",
         "path": Path.home() / ".claude" / "plugins" / "marketplaces" / "claude-code-workflows",
         "pattern": "plugins/*/skills/*/skill.md",
-        "priority": 5
+        "priority": 4
     },
     {
         "name": "claude-code-plugins",
         "path": Path.home() / ".claude" / "plugins" / "marketplaces" / "claude-code-plugins",
         "pattern": "*/skills/*/skill.md",
-        "priority": 6
+        "priority": 5
     }
 ]
 
@@ -146,12 +149,54 @@ def extract_frontmatter(content: str) -> Dict[str, Any]:
         parts = content.split("---", 2)
         if len(parts) >= 3:
             yaml_content = parts[1].strip()
-            for line in yaml_content.split("\n"):
-                if ":" in line:
-                    key, value = line.split(":", 1)
-                    frontmatter[key.strip()] = value.strip()
+
+            # Try proper YAML parsing first
+            try:
+                import yaml
+                parsed = yaml.safe_load(yaml_content)
+                if isinstance(parsed, dict):
+                    frontmatter = parsed
+                # else: non-dict YAML (e.g., scalar) - keep empty dict
+            except ImportError:
+                # PyYAML not installed - use fallback parser below
+                pass
+            except Exception:
+                # Malformed YAML - use fallback parser below
+                pass
+
+            # Fallback to basic parsing if YAML parsing failed or returned non-dict
+            if not frontmatter:
+                current_key = None
+                for line in yaml_content.split("\n"):
+                    if ":" in line and not line.startswith(" "):
+                        key, value = line.split(":", 1)
+                        current_key = key.strip()
+                        frontmatter[current_key] = value.strip()
+                    elif line.startswith("  ") and current_key == "metadata":
+                        # Basic nested parsing for metadata
+                        if "metadata" not in frontmatter or not isinstance(frontmatter["metadata"], dict):
+                            frontmatter["metadata"] = {}
+                        if ":" in line:
+                            key, value = line.strip().split(":", 1)
+                            frontmatter["metadata"][key.strip()] = value.strip()
 
     return frontmatter
+
+
+def get_version(frontmatter: Dict[str, Any]) -> str:
+    """Extract version from frontmatter, checking both root and metadata."""
+    # First check root level (legacy/deprecated)
+    if "version" in frontmatter:
+        return str(frontmatter["version"])
+
+    # Then check metadata.version (preferred location)
+    if "metadata" in frontmatter and isinstance(frontmatter["metadata"], dict):
+        version = frontmatter["metadata"].get("version")
+        if version:
+            return str(version)
+
+    # Default fallback
+    return "1.0.0"
 
 
 def extract_triggers(content: str) -> List[str]:
@@ -172,8 +217,13 @@ def extract_triggers(content: str) -> List[str]:
 
     # Also extract from trigger tables
     table_pattern = r'\|\s*`([^`]+)`\s*\|'
-    if "Trigger" in content:
-        table_section = content[content.find("Trigger"):content.find("---", content.find("Trigger"))]
+    trigger_start = content.find("Trigger")
+    if trigger_start != -1:
+        # Guard against find() returning -1
+        end_marker = content.find("---", trigger_start)
+        if end_marker == -1:
+            end_marker = len(content)  # Use end of content if no delimiter found
+        table_section = content[trigger_start:end_marker]
         matches = re.findall(table_pattern, table_section)
         triggers.extend(matches)
 
@@ -258,7 +308,7 @@ def parse_skill_file(path: Path, source_name: str, priority: int) -> Optional[Di
         "triggers": triggers,
         "keywords": keywords,
         "domains": domains,
-        "version": frontmatter.get("version", "1.0.0")
+        "version": get_version(frontmatter)
     }
 
 
@@ -283,34 +333,17 @@ def discover_skills(verbose: bool = False) -> Result:
             print(f"Scanning {source['name']}: {source_path}", file=sys.stderr)
 
         # Find skill files
-        source_patterns = source.get("patterns")
-        if not source_patterns:
-            source_patterns = [source["pattern"]]
+        pattern_parts = source["pattern"].split("/")
 
-        skill_files = []
-        for pattern in source_patterns:
-            pattern_parts = pattern.split("/")
+        if len(pattern_parts) == 2:
+            # Simple pattern like */skill.md or */[Ss][Kk][Ii][Ll][Ll].[Mm][Dd]
+            skill_files = list(source_path.glob(source["pattern"]))
+        else:
+            # Complex pattern - use recursive glob (case-insensitive for skill files)
+            skill_files = list(source_path.glob("**/*.md"))
+            skill_files = [f for f in skill_files if f.name.lower() in ("skill.md", "skills.md")]
 
-            if len(pattern_parts) == 2:
-                # Simple pattern like */SKILL.md
-                skill_files.extend(list(source_path.glob(pattern)))
-            else:
-                # Complex pattern - use recursive glob
-                found = list(source_path.glob("**/*.md"))
-                found = [f for f in found if "skill" in f.name.lower()]
-                skill_files.extend(found)
-
-        # Deduplicate files across multiple patterns
-        unique_files = []
-        seen = set()
         for skill_file in skill_files:
-            key = str(skill_file.resolve())
-            if key in seen:
-                continue
-            seen.add(key)
-            unique_files.append(skill_file)
-
-        for skill_file in unique_files:
             skill_data = parse_skill_file(skill_file, source["name"], source["priority"])
             if skill_data:
                 skills.append(skill_data)
@@ -421,7 +454,14 @@ def main():
             for warning in result.warnings:
                 print(f"  - {warning}")
 
-    sys.exit(0 if result.success else 1)
+    # Exit codes: 0 = success, 1 = general failure, 3 = no sources found
+    if not result.success:
+        sys.exit(1)
+    elif result.data['total_count'] == 0 and len(result.warnings) == len(SKILL_SOURCES):
+        # All sources were missing - this is exit code 3 per docstring
+        sys.exit(3)
+    else:
+        sys.exit(0)
 
 
 if __name__ == "__main__":

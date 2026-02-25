@@ -422,3 +422,116 @@ Phase 4: Synthesis Panel ──────────┐
    │  Registry   │
    └─────────────┘
 ```
+
+---
+
+## Forked Context for Panel Agents
+
+Skills can run in isolated forked contexts using `context: fork`. This has implications for the synthesis panel.
+
+### What is Forked Context?
+
+```yaml
+---
+name: isolated-skill
+context: fork
+agent: general-purpose
+---
+```
+
+When `context: fork` is set:
+- Skill executes in a separate sub-agent process
+- Sub-agent has its own conversation history (starts fresh)
+- Parent conversation context is NOT inherited
+- Results are returned to parent when sub-agent completes
+
+### Implications for Multi-Agent Synthesis
+
+**Current Approach (Shared Context):**
+```
+Main Context
+    │
+    ├── Phase 1: Analysis (in main context)
+    ├── Phase 2: Specification (in main context)
+    ├── Phase 3: Generation (in main context)
+    └── Phase 4: Synthesis Panel
+        ├── Design Agent (Task, shares context)
+        ├── Audience Agent (Task, shares context)
+        └── Evolution Agent (Task, shares context)
+```
+
+Agents share context but run via Task tool with `run_in_background: true`.
+
+**Alternative Approach (Forked Contexts):**
+
+For skills that NEED context isolation (e.g., security-sensitive reviews):
+
+```
+Main Context
+    │
+    └── Phase 4: Synthesis Panel
+        ├── Design Agent (context: fork) ─── Clean slate
+        ├── Audience Agent (context: fork) ─── Clean slate
+        └── Evolution Agent (context: fork) ─── Clean slate
+```
+
+### When to Use Forked Contexts
+
+| Scenario | Recommendation | Rationale |
+|----------|----------------|-----------|
+| Standard skill creation | Shared context | Agents need spec + generated skill |
+| Security-sensitive review | Forked context | Prevent context pollution |
+| Independent evaluations | Forked context | Each agent judges without bias |
+| Iterative refinement | Shared context | Agents need previous feedback |
+
+### Skill Configuration for Forked Panel Agents
+
+If creating a skill that spawns forked review agents:
+
+```markdown
+## Phase 4: Synthesis Panel
+
+Launch review agents in forked contexts:
+
+\`\`\`yaml
+# Agent configuration for forked execution
+- name: design-reviewer
+  context: fork
+  agent: general-purpose
+  prompt: |
+    You are the Design Agent. Review this skill for:
+    - Architecture pattern appropriateness
+    - Phase ordering and dependencies
+    - Verification concreteness
+
+    Skill to review:
+    {{SKILL_CONTENT}}
+
+    Specification:
+    {{SPEC_CONTENT}}
+\`\`\`
+
+Note: When using forked context, you MUST include all necessary context
+in the prompt since the agent cannot access parent conversation history.
+```
+
+### Trade-offs
+
+| Aspect | Shared Context | Forked Context |
+|--------|----------------|----------------|
+| Context access | Full history | Prompt only |
+| Independence | May be biased by prior discussion | Clean evaluation |
+| Efficiency | Lower token usage | Higher (must include context) |
+| Coordination | Easier | Requires explicit data passing |
+| Setup complexity | Minimal | Must include all context in prompt |
+| Use case | Iterative workflows | Independent evaluations |
+
+### SkillForge's Choice
+
+SkillForge uses **shared context** (no `context: fork`) because:
+1. Phase 0 triage results must inform later phases
+2. Specification from Phase 2 must be available in Phase 3
+3. Panel agents need both specification AND generated skill
+4. Iteration requires feedback from previous rounds
+
+Skills created BY SkillForge may choose either approach based on their needs.

@@ -2,6 +2,21 @@
 name: {{SKILL_NAME}}
 description: >
   {{DESCRIPTION}}
+license: MIT
+model: claude-opus-4-5-20251101
+user-invocable: true
+# Uncomment to restrict available tools:
+# allowed-tools:
+#   - Read
+#   - Glob
+#   - Grep
+#   - Bash
+# Uncomment for isolated sub-agent execution:
+# context: fork
+# agent: general-purpose
+metadata:
+  version: 1.0.0
+  author: {{AUTHOR}}
 ---
 
 # {{SKILL_TITLE}}
@@ -59,24 +74,6 @@ After execution:
 
 1. **{{EXTENSION_1_NAME}}:** {{EXTENSION_1_DESC}}
 2. **{{EXTENSION_2_NAME}}:** {{EXTENSION_2_DESC}}
-
-## Directory Structure
-
-```
-{{SKILL_NAME}}/
-├── SKILL.md              # Main skill definition (this file)
-├── references/           # Loaded into context to inform Claude's thinking
-│   └── {{REF_1_FILE}}
-├── assets/               # Used in output, NEVER loaded into context
-│   └── templates/        # Templates, boilerplate, starter files
-│       └── {{TEMPLATE_FILE}}
-└── scripts/              # Executable automation and validation
-    └── {{SCRIPT_FILE}}
-```
-
-> **references/** = knowledge for Claude to read and reason with.
-> **assets/** = raw materials for Claude to copy, adapt, or include in output.
-> Never put output templates in references. Never put background knowledge in assets.
 
 ## References
 
