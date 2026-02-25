@@ -15,6 +15,7 @@ Example:
 
 import sys
 import zipfile
+import fnmatch
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -26,6 +27,36 @@ class PackageResult:
     success: bool
     message: str
     output_path: Optional[Path] = None
+
+
+def load_skillignore(skill_path: Path) -> list[str]:
+    """Load .skillignore patterns from a skill directory."""
+    ignore_file = skill_path / ".skillignore"
+    if not ignore_file.exists():
+        return []
+
+    patterns: list[str] = []
+    for line in ignore_file.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped and not stripped.startswith("#"):
+            patterns.append(stripped)
+    return patterns
+
+
+def is_ignored(file_path: Path, skill_path: Path, patterns: list[str]) -> bool:
+    """Check whether a file should be excluded by .skillignore."""
+    rel_path = str(file_path.relative_to(skill_path))
+    name = file_path.name
+
+    for pattern in patterns:
+        if fnmatch.fnmatch(name, pattern):
+            return True
+        if fnmatch.fnmatch(rel_path, pattern):
+            return True
+        # Handle directory-style patterns like "assets/images"
+        if rel_path.startswith(pattern + "/") or rel_path == pattern:
+            return True
+    return False
 
 # Import validation from quick_validate
 try:
@@ -78,6 +109,7 @@ def package_skill(skill_path, output_dir=None) -> PackageResult:
         output_path = Path.cwd()
 
     skill_filename = output_path / f"{skill_name}.skill"
+    ignore_patterns = load_skillignore(skill_path)
 
     # Create the .skill file (zip format)
     try:
@@ -87,6 +119,9 @@ def package_skill(skill_path, output_dir=None) -> PackageResult:
                 if file_path.is_file():
                     # Skip common exclusions
                     if file_path.name.startswith('.') or '__pycache__' in str(file_path):
+                        continue
+                    # Apply explicit .skillignore patterns
+                    if is_ignored(file_path, skill_path, ignore_patterns):
                         continue
                     # Calculate the relative path within the zip
                     arcname = file_path.relative_to(skill_path.parent)

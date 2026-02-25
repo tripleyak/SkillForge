@@ -455,14 +455,17 @@ hooks:
     - matcher: "Bash(python:scripts/generate*)"
       hooks:
         - type: command
-          command: "python scripts/validate_params.py $TOOL_INPUT"
+          command: "python scripts/validate_params.py"
   PostToolUse:
     - matcher: "Write"
       hooks:
         - type: command
-          command: "python scripts/verify_artifact.py $TOOL_OUTPUT"
+          command: "python scripts/verify_artifact.py"
 ---
 ```
+
+Read `$TOOL_INPUT` and `$TOOL_OUTPUT` from environment variables inside the script.
+Avoid interpolating these values directly in shell command strings.
 
 **Script requirements for hook integration:**
 1. Accept input via `$TOOL_INPUT` or `$TOOL_OUTPUT` environment variables

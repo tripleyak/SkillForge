@@ -10,10 +10,6 @@ allowed-tools:
   - Grep
   - Write
   - Edit
-  - Bash
-  - Task
-  - WebFetch
-  - WebSearch
 metadata:
   version: 4.1.0
   subagent_model: claude-opus-4-5-20251101
@@ -131,6 +127,15 @@ Production-Ready Agentic Skill
 - Zero tolerance for errors
 - Autonomous execution at maximum depth
 - Scripts enable self-verification and agentic operation
+
+### Tool Escalation Policy
+
+Start with least privilege (`Read`, `Glob`, `Grep`, `Write`, `Edit`).
+
+Only add higher-risk tools when explicitly required:
+- `Bash` for deterministic local scripts that cannot be replaced with file edits
+- `WebFetch` / `WebSearch` only when external facts are required
+- `Task` only for true parallel sub-agent orchestration
 
 ---
 
@@ -309,7 +314,7 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "./scripts/validate.sh $TOOL_INPUT"
+          command: "./scripts/validate.sh"
 metadata:
   version: 1.0.0
 ---
@@ -322,7 +327,7 @@ metadata:
 | `context` | `fork` | Creates isolated sub-agent with separate conversation history |
 | `agent` | `Explore`, `Plan`, `general-purpose` | Only valid when `context: fork` |
 | `user-invocable` | `true`, `false` | `false` hides from slash menu but Claude can still auto-invoke |
-| `hooks` | Object | See [Hooks Integration](#hooks-integration-claude-code-v210) section |
+| `hooks` | Object | See [Hooks Integration](#hooks-integration) section |
 
 ---
 
@@ -375,12 +380,12 @@ hooks:
     - matcher: "Bash"
       hooks:
         - type: command
-          command: "./scripts/validate-input.sh $TOOL_INPUT"
+          command: "./scripts/validate-input.sh"
   PostToolUse:
     - matcher: "Write"
       hooks:
         - type: command
-          command: "./scripts/log-output.sh $TOOL_OUTPUT"
+          command: "./scripts/log-output.sh"
           once: true
   Stop:
     - hooks:
@@ -405,6 +410,9 @@ hooks:
 | `type` | Hook type: `command` (shell) or `prompt` (Claude evaluation) |
 | `command` | Shell command to execute (for `type: command`) |
 | `once` | If `true`, run only once per session (default: `false`) |
+
+Read `$TOOL_INPUT` / `$TOOL_OUTPUT` inside hook scripts from environment variables.
+Do not interpolate untrusted tool payloads directly into shell command strings.
 
 **When to Use Hooks:**
 
@@ -454,6 +462,7 @@ After creation:
 - [ ] 3-5 trigger phrases defined
 - [ ] Timelessness score ≥ 7
 - [ ] `python scripts/quick_validate.py` passes
+- [ ] `python scripts/check_docs_safety.py` passes
 
 ---
 
