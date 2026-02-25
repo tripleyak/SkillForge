@@ -137,6 +137,14 @@ The panel includes:
 
 ---
 
+## Evolution Mandate
+
+Skill quality is not enough on day one. The system must stay maintainable and extensible as the skill ecosystem grows.
+
+![Evolution Mandate](assets/images/08-evolution-mandate.png)
+
+---
+
 ## Three Core Principles
 
 ![Core Principles](assets/images/09-core-principles.png)
@@ -146,6 +154,14 @@ The panel includes:
 | **Engineer for Agents** | Standardized directory structure, simplified frontmatter, automated validation |
 | **Systematize Rigor** | 4-phase architecture, regression questioning, 11 thinking lenses, multi-agent synthesis |
 | **Design for Evolution** | Dedicated Evolution agent, mandatory ≥7/10 timelessness score, degrees of freedom assessment |
+
+---
+
+## Agentic Capabilities
+
+SkillForge is designed so skills can execute repeatable work, validate outputs, and support autonomous operation where appropriate.
+
+![Agentic Capabilities](assets/images/10-agentic-capabilities.png)
 
 ---
 
@@ -180,6 +196,8 @@ skillforge/
     ├── quick_validate.py
     └── package_skill.py
 ```
+
+![Directory Structure Visual](assets/images/11-directory-structure.png)
 
 **Key distinction:** `references/` = loaded into context to inform the model's reasoning. `assets/` = used in output, never loaded into context.
 
@@ -253,6 +271,7 @@ MIT License — see [LICENSE](LICENSE)
 - Added Codex skill source discovery (`~/.codex/skills`) with uppercase `SKILL.md` support
 - Updated scaffold and validation scripts to use Codex path examples
 - Kept full backward compatibility with Claude Code paths
+- Added additive README visuals for evolution mandate, agentic capabilities, and directory structure
 
 ### v5.0.0
 - Context-efficient redesign: SKILL.md slimmed from 872 to 313 lines (64% reduction)
