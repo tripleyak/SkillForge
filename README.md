@@ -240,12 +240,6 @@ By codifying expert analysis, rigorous specification, and multi-agent peer revie
 
 ---
 
-## Contributors
-
-- Codex
-
----
-
 ## License
 
 MIT License — see [LICENSE](LICENSE)
