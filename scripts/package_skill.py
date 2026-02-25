@@ -13,6 +13,7 @@ Example:
     python package_skill.py ~/.claude/skills/my-skill ./dist
 """
 
+import fnmatch
 import sys
 import zipfile
 from pathlib import Path
@@ -25,6 +26,34 @@ except ImportError:
     import os
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from quick_validate import validate_skill
+
+
+def load_skillignore(skill_path):
+    """Load .skillignore patterns from the skill directory."""
+    ignorefile = skill_path / ".skillignore"
+    if not ignorefile.exists():
+        return []
+    patterns = []
+    for line in ignorefile.read_text().splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            patterns.append(line)
+    return patterns
+
+
+def is_ignored(file_path, skill_path, patterns):
+    """Check if a file matches any .skillignore pattern."""
+    rel = str(file_path.relative_to(skill_path))
+    name = file_path.name
+    for pattern in patterns:
+        if fnmatch.fnmatch(name, pattern):
+            return True
+        if fnmatch.fnmatch(rel, pattern):
+            return True
+        # Handle directory patterns (e.g. "assets/images")
+        if rel.startswith(pattern + "/") or rel == pattern:
+            return True
+    return False
 
 
 def package_skill(skill_path, output_dir=None):
@@ -74,14 +103,23 @@ def package_skill(skill_path, output_dir=None):
 
     skill_filename = output_path / f"{skill_name}.skill"
 
+    # Load .skillignore patterns
+    ignore_patterns = load_skillignore(skill_path)
+    if ignore_patterns:
+        print(f"Loaded .skillignore ({len(ignore_patterns)} patterns)\n")
+
     # Create the .skill file (zip format)
     try:
         with zipfile.ZipFile(skill_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
             # Walk through the skill directory
             for file_path in skill_path.rglob('*'):
                 if file_path.is_file():
-                    # Skip common exclusions
+                    # Skip dotfiles and __pycache__
                     if file_path.name.startswith('.') or '__pycache__' in str(file_path):
+                        continue
+                    # Skip .skillignore matches
+                    if is_ignored(file_path, skill_path, ignore_patterns):
+                        print(f"  Skipped: {file_path.relative_to(skill_path)}")
                         continue
                     # Calculate the relative path within the zip
                     arcname = file_path.relative_to(skill_path.parent)

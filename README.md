@@ -190,8 +190,13 @@ skillforge/
 ![Installation](assets/images/12-installation.png)
 
 ```bash
-# Installation
-cp -r skillforge ~/.claude/skills/
+# Install (excludes repo-only files like README.md automatically)
+git clone https://github.com/tripleyak/SkillForge.git /tmp/skillforge
+cp -r /tmp/skillforge ~/.claude/skills/skillforge
+rm -rf ~/.claude/skills/skillforge/{README.md,LICENSE,.git,.gitignore,.skillignore}
+
+# Or package as .skill file (respects .skillignore)
+python scripts/package_skill.py /tmp/skillforge ./dist
 
 # Full autonomous execution
 SkillForge: {goal}
@@ -205,6 +210,8 @@ skillforge --plan-only
 # Scaffold a new skill
 python scripts/init_skill.py my-skill --path ~/.claude/skills
 ```
+
+> **Note:** `README.md`, `LICENSE`, and `assets/images/` are for GitHub browsing only. They are excluded from `.skill` packages via `.skillignore` and should not be copied into your skills directory.
 
 ---
 

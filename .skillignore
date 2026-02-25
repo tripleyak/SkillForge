@@ -1,0 +1,11 @@
+# Files excluded from skill packaging and installation.
+# These exist in the repo but are not part of the skill itself.
+README.md
+LICENSE
+.git
+.gitignore
+.skillignore
+.DS_Store
+__pycache__
+*.pyc
+assets/images
