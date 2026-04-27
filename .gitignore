@@ -60,3 +60,4 @@ htmlcov/
 # Generated specifications (temporary)
 *.spec.xml.tmp
 SKILL_SPEC.tmp.md
+.vercel
