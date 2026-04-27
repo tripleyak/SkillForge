@@ -1,0 +1,1584 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SkillForge — From Art to Engineering</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0b0c0e;
+    --bg-2: #111316;
+    --ink: #f4efe6;
+    --ink-dim: #b9b2a4;
+    --ink-mute: #6c6a64;
+    --line: #22252a;
+    --line-2: #2e3138;
+    --ember: #ff7a2d;     /* forge orange */
+    --ember-2: #ffb066;
+    --glow: #ff9445;
+    --steel: #7aa2d9;     /* cool accent */
+    --ok: #8ed28a;
+    --warn: #e8c36a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#07080a;color:var(--ink);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  .mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+  .serif{font-family:'Fraunces',serif;font-style:italic;font-weight:400}
+  a{color:inherit}
+  ::selection{background:var(--ember);color:#1a0f06}
+
+  /* ---------- Grain / background noise ---------- */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.035;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.8'/></svg>");
+  }
+
+  /* ---------- Nav ---------- */
+  .nav{
+    position:fixed;top:0;left:0;right:0;z-index:40;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 28px;
+    backdrop-filter:blur(14px);
+    background:linear-gradient(180deg, rgba(11,12,14,.7), rgba(11,12,14,.2));
+    border-bottom:1px solid rgba(255,255,255,.04);
+  }
+  .brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:.02em}
+  .brand .mark{width:22px;height:22px;position:relative}
+  .pill{
+    font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim);
+    border:1px solid var(--line-2);padding:5px 10px;border-radius:999px;
+  }
+  .nav-links{display:flex;gap:22px;font-size:13px;color:var(--ink-dim)}
+  .nav-links a{text-decoration:none}
+  .nav-links a:hover{color:var(--ink)}
+  .nav-cta{
+    font-family:'JetBrains Mono',monospace;font-size:12px;
+    padding:8px 14px;border:1px solid var(--ember);color:var(--ember);border-radius:6px;
+    text-decoration:none;transition:.2s;
+  }
+  .nav-cta:hover{background:var(--ember);color:#1a0f06}
+
+  /* ---------- Site-wide ambient fire (lives behind everything) ---------- */
+  .site-bg{
+    position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;
+  }
+  .site-bg canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .site-bg .glow{
+    position:absolute;inset:0;
+    background:
+      radial-gradient(70% 60% at 85% 95%, rgba(255,140,80,.10), transparent 60%),
+      radial-gradient(50% 70% at 15% 95%, rgba(255,110,60,.08), transparent 60%),
+      radial-gradient(60% 80% at 50% 110%, rgba(255,150,90,.07), transparent 60%);
+    mix-blend-mode:screen;
+  }
+  .site-bg .ember-layer{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  /* Make every section transparent so the fire shows through */
+  body > section, body > div.marquee, body > footer{position:relative;z-index:2}
+  /* Wrap content above the fire */
+  main, .nav{position:relative;z-index:5}
+
+  /* ---------- Hero ---------- */
+  .hero{
+    position:relative;min-height:100vh;padding:180px 28px 140px;
+    max-width:1440px;margin:0 auto;
+    display:grid;grid-template-columns:minmax(0,960px);
+  }
+  .hero-inner{position:relative;z-index:2;max-width:960px}
+
+  .hero-meta{
+    display:flex;align-items:center;gap:10px;margin-bottom:28px;
+    font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-mute);letter-spacing:.18em;
+  }
+  .hero-meta .dot{width:6px;height:6px;border-radius:50%;background:var(--ember);box-shadow:0 0 12px var(--ember);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  h1.headline{
+    font-size:clamp(48px,6.4vw,96px);
+    line-height:.96;letter-spacing:-.035em;font-weight:600;margin:0 0 24px;
+  }
+  h1.headline .ember{color:var(--ember)}
+  h1.headline .serif{color:var(--ink-dim)}
+
+  /* Forge-letter animation — letters appear white-hot, cool through orange → settled */
+  h1.headline{text-indent:0}
+  h1.headline .fl{
+    display:inline-block;
+    /* Kill the inline-block whitespace gap so letters align exactly with surrounding text */
+    margin-right:-0.001em;
+    opacity:0;
+    transform:translateY(18px) scale(.94);
+    color:#fff8ea;
+    text-shadow:
+      0 0 22px rgba(255,220,160,.95),
+      0 0 44px rgba(255,150,70,.7),
+      0 0 80px rgba(255,90,30,.4);
+    filter:blur(3px);
+    animation:forgeLetter 1.4s cubic-bezier(.22,.9,.3,1) forwards;
+    will-change:transform,opacity,filter,color,text-shadow;
+  }
+  /* letters inside .ember and .serif settle to those colors instead of cream */
+  h1.headline .ember .fl{animation-name:forgeLetterEmber}
+  h1.headline .serif .fl{animation-name:forgeLetterSerif}
+
+  @keyframes forgeLetter{
+    0%  {opacity:0;  transform:translateY(24px) scale(.92); filter:blur(4px);
+         color:#fff8ea;
+         text-shadow:0 0 28px rgba(255,230,180,1), 0 0 60px rgba(255,150,70,.85), 0 0 120px rgba(255,90,30,.55)}
+    25% {opacity:1;  transform:translateY(0) scale(1.02);   filter:blur(1.5px);
+         color:#ffd59a;
+         text-shadow:0 0 24px rgba(255,200,120,.95), 0 0 50px rgba(255,130,60,.7)}
+    55% {opacity:1;  transform:translateY(0) scale(1);      filter:blur(0);
+         color:#ffb37a;
+         text-shadow:0 0 14px rgba(255,150,90,.55), 0 0 30px rgba(255,100,50,.3)}
+    100%{opacity:1;  transform:translateY(0) scale(1);      filter:blur(0);
+         color:var(--ink);
+         text-shadow:none}
+  }
+  @keyframes forgeLetterEmber{
+    0%  {opacity:0;  transform:translateY(24px) scale(.92); filter:blur(4px);
+         color:#fff8ea;
+         text-shadow:0 0 28px rgba(255,230,180,1), 0 0 60px rgba(255,150,70,.85), 0 0 120px rgba(255,90,30,.55)}
+    25% {opacity:1;  transform:translateY(0) scale(1.04);   filter:blur(1.5px);
+         color:#ffd59a;
+         text-shadow:0 0 28px rgba(255,200,120,.95), 0 0 60px rgba(255,140,70,.8)}
+    55% {opacity:1;  transform:translateY(0) scale(1);      filter:blur(0);
+         color:#ff9a5a;
+         text-shadow:0 0 18px rgba(255,130,70,.7), 0 0 36px rgba(255,100,40,.35)}
+    100%{opacity:1;  transform:translateY(0) scale(1);      filter:blur(0);
+         color:var(--ember);
+         text-shadow:0 0 14px rgba(255,122,45,.35)}
+  }
+  @keyframes forgeLetterSerif{
+    0%  {opacity:0;  transform:translateY(24px) scale(.92); filter:blur(4px);
+         color:#fff8ea;
+         text-shadow:0 0 28px rgba(255,230,180,1), 0 0 60px rgba(255,150,70,.85)}
+    25% {opacity:1;  transform:translateY(0) scale(1.02);   filter:blur(1.5px);
+         color:#ffd59a;
+         text-shadow:0 0 20px rgba(255,200,140,.8)}
+    55% {opacity:1;  transform:translateY(0) scale(1);      filter:blur(0);
+         color:#d9ccb5;
+         text-shadow:0 0 10px rgba(255,180,120,.35)}
+    100%{opacity:1;  transform:translateY(0) scale(1);      filter:blur(0);
+         color:var(--ink-dim);
+         text-shadow:none}
+  }
+
+  .lede{
+    font-size:18px;line-height:1.55;color:var(--ink-dim);max-width:560px;margin:0 0 36px;
+  }
+  .lede b{color:var(--ink);font-weight:500}
+
+  .hero-ctas{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .btn{
+    display:inline-flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;
+    font-size:13px;padding:14px 20px;border-radius:8px;text-decoration:none;
+    transition:.2s transform, .2s background;
+  }
+  .btn.primary{background:var(--ember);color:#1a0f06;border:1px solid var(--ember);box-shadow:0 10px 40px -10px rgba(255,122,45,.6)}
+  .btn.primary:hover{transform:translateY(-1px);background:var(--ember-2)}
+  .btn.ghost{border:1px solid var(--line-2);color:var(--ink)}
+  .btn.ghost:hover{border-color:var(--ink-dim)}
+  .btn svg{width:14px;height:14px}
+
+  .hero-stats{
+    margin-top:64px;display:grid;grid-template-columns:repeat(4,1fr);gap:0;
+    border-top:1px solid rgba(255,255,255,.06);padding-top:24px;max-width:720px;
+  }
+  .hero-stats .s{display:flex;flex-direction:column;gap:4px}
+  .hero-stats .n{font-family:'JetBrains Mono',monospace;font-size:24px;color:var(--ink)}
+  .hero-stats .l{font-size:11px;color:var(--ink-mute);letter-spacing:.1em;text-transform:uppercase}
+
+  /* ---------- Ambient ember dot (used by site-wide layer) ---------- */
+  .ember-dot{
+    position:absolute;width:3px;height:3px;border-radius:50%;
+    background:var(--ember);
+    box-shadow:0 0 10px var(--glow), 0 0 24px rgba(255,58,0,.4);
+    animation:embRise linear infinite;
+    will-change:transform,opacity;
+  }
+  .ember-dot.bright{background:#ffe9b8;box-shadow:0 0 12px #ffce66, 0 0 28px var(--ember)}
+  .ember-dot.cool{background:#ffb066;box-shadow:0 0 8px var(--ember), 0 0 18px rgba(255,58,0,.25)}
+  @keyframes embRise{
+    0%{transform:translate3d(0,0,0) scale(.6);opacity:0}
+    10%{opacity:.9}
+    60%{opacity:.7}
+    100%{transform:translate3d(var(--dx,0),var(--dy,-520px),0) scale(.15);opacity:0}
+  }
+  .phase-readout{
+    position:absolute;right:28px;top:110px;z-index:3;
+    font-family:'JetBrains Mono',monospace;font-size:11px;
+    color:var(--ink-mute);letter-spacing:.2em;text-transform:uppercase;
+    display:flex;align-items:center;gap:10px;
+  }
+  .phase-readout .tick{width:6px;height:6px;border-radius:50%;background:var(--ember);box-shadow:0 0 10px var(--ember);animation:pulse 1.6s infinite}
+  .phase-readout .lbl{color:var(--ember)}
+
+  /* ---------- Marquee ---------- */
+  .marquee{
+    border-top:1px solid rgba(255,122,45,.18);border-bottom:1px solid rgba(255,122,45,.18);
+    padding:22px 0;overflow:hidden;position:relative;
+    background:linear-gradient(180deg, rgba(17,19,22,.7), rgba(17,19,22,.85), rgba(17,19,22,.7));
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  }
+  .marquee-track{display:flex;gap:60px;white-space:nowrap;animation:slide 40s linear infinite;width:max-content}
+  @keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  .marquee-item{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink-dim);display:inline-flex;align-items:center;gap:14px}
+  .marquee-item .mark{color:var(--ember)}
+
+  /* ---------- Section scaffold ---------- */
+  section.block{padding:140px 28px;max-width:1440px;margin:0 auto;position:relative}
+  .sec-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:60px;border-bottom:1px solid var(--line);padding-bottom:20px}
+  .sec-kicker{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ember);letter-spacing:.2em;text-transform:uppercase}
+  .sec-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-mute)}
+  .sec-title{font-size:clamp(36px,4.5vw,64px);line-height:1;letter-spacing:-.03em;font-weight:600;margin:18px 0 0;max-width:900px}
+  .sec-title em{font-family:'Fraunces',serif;font-style:italic;font-weight:400;color:var(--ember)}
+  .sec-sub{color:var(--ink-dim);max-width:620px;font-size:17px;line-height:1.55;margin-top:20px}
+
+  /* ---------- Triage section ---------- */
+  .triage{
+    display:grid;grid-template-columns:.9fr 1.1fr;gap:80px;align-items:start;
+  }
+  .triage-stage{
+    border:1px solid var(--line);border-radius:18px;padding:28px;
+    background:linear-gradient(180deg, rgba(17,19,22,.78), rgba(17,19,22,.62));
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    box-shadow:0 30px 60px -30px rgba(255,90,20,.25), inset 0 1px 0 rgba(255,180,100,.04);
+    min-height:520px;position:relative;overflow:hidden;
+  }
+  .triage-input{
+    border:1px solid var(--line-2);border-radius:10px;padding:18px 20px;
+    font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink);
+    display:flex;align-items:center;gap:12px;margin-bottom:16px;
+    background:rgba(7,8,10,.35);transition:border-color .25s, box-shadow .25s;
+  }
+  .triage-input:focus-within{
+    border-color:var(--ember);
+    box-shadow:0 0 0 3px rgba(255,122,45,.12), 0 0 40px -8px rgba(255,122,45,.4);
+  }
+  .triage-input .caret{color:var(--ember);animation:blink 1s infinite}
+  @keyframes blink{50%{opacity:0}}
+  .triage-box{
+    flex:1;background:transparent;border:0;outline:none;
+    color:var(--ink);font:inherit;letter-spacing:.01em;padding:0;min-width:0;
+  }
+  .triage-box::placeholder{color:var(--ink-mute);opacity:.6}
+  .triage-input.typing .caret{display:none}
+
+  /* Quick prompts */
+  .triage-quick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:22px}
+  .triage-quick .qp{
+    font:11px/1 'JetBrains Mono',monospace;letter-spacing:.08em;
+    color:var(--ink-dim);background:rgba(255,255,255,.02);
+    border:1px solid var(--line-2);border-radius:999px;
+    padding:7px 12px;cursor:pointer;transition:.18s;
+  }
+  .triage-quick .qp:hover{
+    color:var(--ember);border-color:var(--ember);
+    background:rgba(255,122,45,.06);transform:translateY(-1px);
+  }
+  .triage-quick .qp:active{transform:translateY(0)}
+  .routes{display:grid;grid-template-columns:1fr;gap:12px;margin-top:24px}
+  .route{
+    display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;
+    border:1px solid var(--line);border-radius:10px;padding:14px 16px;
+    font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-dim);
+    transition:.4s;
+  }
+  .route .tag{
+    font-size:10px;letter-spacing:.14em;padding:3px 8px;border-radius:4px;
+    background:var(--line);color:var(--ink-dim);
+  }
+  .route .score{color:var(--ink-mute);font-size:11px}
+  .route.match{
+    border-color:var(--ember);background:linear-gradient(90deg, rgba(255,122,45,.08), transparent);
+    color:var(--ink);
+  }
+  .route.match .tag{background:var(--ember);color:#1a0f06}
+  .route .bar{
+    grid-column:1/-1;height:2px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:10px;
+  }
+  .route .bar i{display:block;height:100%;background:var(--ember-2);width:0;transition:width 1.4s ease-out}
+  .triage-legend{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-mute);margin-top:18px}
+
+  .triage-copy h3{font-size:28px;line-height:1.15;font-weight:600;letter-spacing:-.02em;margin:0 0 14px}
+  .triage-copy p{color:var(--ink-dim);line-height:1.55;font-size:16px}
+  .triage-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:32px}
+  .triage-grid .cell{border:1px solid var(--line);border-radius:10px;padding:18px}
+  .triage-grid .cell .k{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ember);letter-spacing:.16em}
+  .triage-grid .cell .v{font-size:15px;color:var(--ink);margin-top:6px;line-height:1.35}
+  .triage-grid .cell .d{font-size:12px;color:var(--ink-mute);margin-top:6px;font-family:'JetBrains Mono',monospace}
+
+  /* ---------- Four phase pipeline ---------- */
+  .pipeline{
+    position:relative;margin-top:40px;
+  }
+  .phases{
+    display:grid;grid-template-columns:repeat(5,1fr);gap:0;
+    border:1px solid var(--line);border-radius:18px;overflow:hidden;
+    background:linear-gradient(180deg, rgba(17,19,22,.78), rgba(17,19,22,.6));
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    box-shadow:0 30px 60px -30px rgba(255,90,20,.25);
+  }
+  .phase{
+    padding:28px 24px;border-right:1px solid var(--line);position:relative;
+    transition:background .3s;cursor:pointer;min-height:280px;
+    display:flex;flex-direction:column;
+  }
+  .phase:last-child{border-right:none}
+  .phase:hover{background:#151619}
+  .phase.active{background:linear-gradient(180deg, rgba(255,122,45,.07), transparent 50%)}
+  .phase .num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-mute);letter-spacing:.18em}
+  .phase.active .num{color:var(--ember)}
+  .phase .nm{font-size:20px;font-weight:600;letter-spacing:-.01em;margin-top:10px;line-height:1.15}
+  .phase .ds{color:var(--ink-dim);font-size:13px;line-height:1.5;margin-top:10px;flex:1}
+  .phase .foot{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-mute);letter-spacing:.14em;margin-top:16px;border-top:1px dashed var(--line-2);padding-top:10px}
+  .phase .foot b{color:var(--ember);font-weight:500}
+  .phase .icon{width:28px;height:28px;margin-top:4px}
+
+  .track{
+    position:relative;height:46px;margin-top:-1px;
+    border-left:1px solid var(--line);border-right:1px solid var(--line);
+    border-bottom:1px solid var(--line);border-radius:0 0 18px 18px;
+    background:linear-gradient(180deg, rgba(17,19,22,.7), rgba(17,19,22,.55));
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);overflow:hidden;
+  }
+  .track-line{position:absolute;top:50%;left:24px;right:24px;height:1px;background:var(--line-2)}
+  .track-fill{position:absolute;top:50%;left:24px;height:2px;background:linear-gradient(90deg, var(--ember), var(--ember-2));border-radius:2px;transform:translateY(-50%);width:0;transition:width .6s}
+  .track-node{
+    position:absolute;top:50%;transform:translate(-50%,-50%);
+    width:12px;height:12px;border-radius:50%;background:var(--bg-2);
+    border:1px solid var(--line-2);transition:.4s;
+  }
+  .track-node.done{background:var(--ember);border-color:var(--ember);box-shadow:0 0 12px var(--ember)}
+  .track-spark{
+    position:absolute;top:50%;width:18px;height:18px;border-radius:50%;transform:translate(-50%,-50%);
+    background:radial-gradient(circle, var(--ember) 0%, transparent 70%);opacity:.9;filter:blur(1px);
+    transition:left .6s;
+  }
+
+  /* ---------- Lenses ---------- */
+  .lenses-wrap{display:grid;grid-template-columns:1.1fr .9fr;gap:60px}
+  .lenses-vis{
+    position:relative;aspect-ratio:1/1;max-width:560px;
+  }
+  .lenses-vis svg{width:100%;height:100%;overflow:visible}
+  .lens-list{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .lens-chip{
+    display:flex;align-items:baseline;gap:10px;padding:12px 14px;
+    border:1px solid var(--line);border-radius:8px;cursor:pointer;transition:.2s;
+    font-size:13px;
+  }
+  .lens-chip .ni{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-mute)}
+  .lens-chip:hover,.lens-chip.on{border-color:var(--ember);background:rgba(255,122,45,.06);color:var(--ink)}
+  .lens-chip.on .ni{color:var(--ember)}
+
+  /* ---------- Synthesis panel ---------- */
+  .synthesis{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
+  .agent{
+    border:1px solid var(--line);border-radius:16px;padding:24px;
+    background:linear-gradient(180deg, rgba(17,19,22,.78), rgba(17,19,22,.6));
+    backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+    box-shadow:0 24px 48px -24px rgba(255,90,20,.22);
+    position:relative;overflow:hidden;min-height:300px;
+    display:flex;flex-direction:column;
+  }
+  .agent .ring{
+    width:56px;height:56px;position:relative;margin-bottom:18px;
+  }
+  .agent .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+  .agent .ring .bg{stroke:var(--line-2);fill:none;stroke-width:3}
+  .agent .ring .fg{stroke:var(--ember);fill:none;stroke-width:3;stroke-linecap:round;stroke-dasharray:150;stroke-dashoffset:150;transition:stroke-dashoffset 1.4s ease-out}
+  .agent .ring .score{
+    position:absolute;inset:0;display:grid;place-items:center;
+    font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ink);
+  }
+  .agent h4{font-size:18px;font-weight:600;margin:0 0 8px;letter-spacing:-.01em}
+  .agent p{color:var(--ink-dim);font-size:13px;line-height:1.5;margin:0;flex:1}
+  .agent .stamp{
+    font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ok);
+    letter-spacing:.16em;margin-top:14px;border-top:1px dashed var(--line-2);padding-top:10px;
+    display:flex;justify-content:space-between;
+  }
+  .agent .stamp.pending{color:var(--warn)}
+  .agent .dot2{width:6px;height:6px;border-radius:50%;background:var(--ok);display:inline-block;vertical-align:middle;margin-right:6px}
+  .agent .stamp.pending .dot2{background:var(--warn);animation:pulse 1.2s infinite}
+
+  /* ---------- Principles ---------- */
+  .principles{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--line)}
+  .principle{padding:48px 40px 48px 0;border-right:1px solid var(--line);position:relative}
+  .principle:last-child{border-right:none;padding-right:0}
+  .principle:not(:first-child){padding-left:40px}
+  .principle .pi-num{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ember);letter-spacing:.2em}
+  .principle h3{font-size:28px;font-weight:600;letter-spacing:-.02em;margin:14px 0 12px;line-height:1.1}
+  .principle h3 em{font-family:'Fraunces',serif;font-style:italic;font-weight:400;color:var(--ember-2)}
+  .principle p{color:var(--ink-dim);font-size:15px;line-height:1.55;margin:0 0 20px}
+  .principle ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+  .principle li{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink-mute);display:flex;align-items:center;gap:10px}
+  .principle li::before{content:"";width:6px;height:1px;background:var(--ember)}
+
+  /* ---------- Install ---------- */
+  .install{
+    border:1px solid var(--line);border-radius:20px;overflow:hidden;
+    background:linear-gradient(180deg, rgba(17,19,22,.82), rgba(17,19,22,.65));
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    box-shadow:0 40px 80px -30px rgba(255,90,20,.3);
+    display:grid;grid-template-columns:1fr 1fr;
+  }
+  .install-copy{padding:48px}
+  .install-copy h3{font-size:36px;font-weight:600;letter-spacing:-.025em;margin:0 0 16px;line-height:1}
+  .install-copy h3 em{font-family:'Fraunces',serif;font-style:italic;font-weight:400;color:var(--ember)}
+  .install-copy p{color:var(--ink-dim);font-size:15px;line-height:1.55}
+  .install-req{margin-top:28px;display:flex;gap:20px}
+  .install-req .r{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ink-mute);letter-spacing:.12em}
+  .install-req .r b{color:var(--ink);font-weight:500;display:block;margin-top:4px;font-size:13px}
+
+  .terminal{
+    background:rgba(7,8,10,.85);border-left:1px solid var(--line);
+    font-family:'JetBrains Mono',monospace;font-size:13px;
+    display:flex;flex-direction:column;
+  }
+  .term-bar{display:flex;align-items:center;gap:6px;padding:14px 18px;border-bottom:1px solid var(--line);color:var(--ink-mute);font-size:11px;letter-spacing:.12em}
+  .term-bar .d{width:9px;height:9px;border-radius:50%;background:var(--line-2)}
+  .term-bar .d.r{background:#d96c6c}
+  .term-bar .d.y{background:#d9b36c}
+  .term-bar .d.g{background:#7fb87a}
+  .term-bar .t{margin-left:auto}
+  .term-body{padding:24px;line-height:1.7;color:var(--ink-dim);flex:1}
+  .term-body .pr{color:var(--ember)}
+  .term-body .cm{color:var(--ink-mute)}
+  .term-body .ok{color:var(--ok)}
+  .term-body .k{color:var(--steel)}
+  .term-body .out{color:var(--ink)}
+  .term-body .line{display:block}
+  .term-body .cursor{display:inline-block;width:8px;height:14px;background:var(--ember);vertical-align:-2px;margin-left:2px;animation:blink 1s infinite}
+
+  /* ---------- Footer ---------- */
+  footer{padding:60px 28px 40px;border-top:1px solid var(--line);margin-top:80px;color:var(--ink-mute);font-size:12px}
+  .foot-wrap{max-width:1440px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px}
+  .foot-wrap .mono{letter-spacing:.14em}
+  .foot-links{display:flex;gap:22px}
+  .foot-links a{text-decoration:none;color:var(--ink-dim)}
+  .foot-links a:hover{color:var(--ember)}
+
+  /* ---------- Reveal on scroll ---------- */
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity .9s, transform .9s cubic-bezier(.2,.7,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+  .stagger > *{opacity:0;transform:translateY(16px);transition:opacity .6s, transform .6s}
+  .stagger.in > *{opacity:1;transform:none}
+  .stagger.in > *:nth-child(1){transition-delay:.04s}
+  .stagger.in > *:nth-child(2){transition-delay:.1s}
+  .stagger.in > *:nth-child(3){transition-delay:.16s}
+  .stagger.in > *:nth-child(4){transition-delay:.22s}
+  .stagger.in > *:nth-child(5){transition-delay:.28s}
+  .stagger.in > *:nth-child(6){transition-delay:.34s}
+  .stagger.in > *:nth-child(7){transition-delay:.4s}
+  .stagger.in > *:nth-child(8){transition-delay:.46s}
+
+  /* Responsive */
+  @media (max-width:980px){
+    .hero{padding-top:140px;padding-bottom:80px}
+    .phase-readout{top:80px;right:16px}
+    .triage,.lenses-wrap{grid-template-columns:1fr;gap:40px}
+    .phases{grid-template-columns:repeat(2,1fr)}
+    .phases .phase{border-right:none;border-bottom:1px solid var(--line)}
+    .synthesis{grid-template-columns:1fr 1fr}
+    .principles{grid-template-columns:1fr}
+    .principle{border-right:none;border-bottom:1px solid var(--line);padding:32px 0 !important}
+    .install{grid-template-columns:1fr}
+    .terminal{border-left:none;border-top:1px solid var(--line)}
+    .nav-links{display:none}
+  }
+</style>
+</head>
+<body>
+
+<!-- Site-wide ambient fire — lives behind every section so the aesthetic carries through the whole page -->
+<div class="site-bg" aria-hidden="true">
+  <canvas id="fireCanvas"></canvas>
+  <div class="glow"></div>
+  <div class="ember-layer" id="emberLayer"></div>
+</div>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="brand">
+    <svg class="mark" viewBox="0 0 24 24" fill="none">
+      <path d="M4 18 L12 4 L20 18 Z" stroke="#ff7a2d" stroke-width="1.6"/>
+      <path d="M8 18 L12 10 L16 18" stroke="#ff7a2d" stroke-width="1.6"/>
+      <circle cx="12" cy="4" r="1.6" fill="#ff7a2d"/>
+    </svg>
+    SkillForge
+    <span class="pill mono">v5.1</span>
+  </div>
+  <div class="nav-links mono">
+    <a href="#triage">Triage</a>
+    <a href="#phases">4 Phases</a>
+    <a href="#lenses">11 Lenses</a>
+    <a href="#synthesis">Synthesis</a>
+    <a href="#install">Install</a>
+  </div>
+  <a href="#install" class="nav-cta">$ install →</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <!-- Phase readout floating in the hero corner -->
+  <div class="phase-readout">
+    <span class="tick"></span>
+    <span>FORGING</span>
+    <span style="color:var(--line-2)">·</span>
+    <span class="lbl" id="forge-phase">PHASE 0 · TRIAGE</span>
+  </div>
+
+  <div class="hero-inner">
+    <div class="hero-meta">
+      <span class="dot"></span>
+      <span>SKILLFORGE / META-SKILL / v5.1.0</span>
+      <span style="color:var(--line-2)">·</span>
+      <span>MIT LICENSED</span>
+    </div>
+    <h1 class="headline reveal" data-forge>
+      From <span class="serif">art</span><br/>
+      to <span class="ember">engineering.</span>
+    </h1>
+    <p class="lede reveal">
+      SkillForge is a <b>meta-skill for Claude Code and Codex</b> that routes, improves, and forges new skills through deep analysis, structured specification, and unanimous multi-agent review. Quality is <b>built in, not bolted on</b>.
+    </p>
+    <div class="hero-ctas reveal">
+      <a href="#install" class="btn primary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+        Forge your first skill
+      </a>
+      <a href="https://github.com/tripleyak/SkillForge" target="_blank" class="btn ghost">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.8 10.9.6.1.8-.2.8-.5v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.6-1.3-1.6-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.2 1.2.9-.3 1.9-.4 2.9-.4s2 .1 2.9.4c2.2-1.5 3.2-1.2 3.2-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.6.8.5 4.5-1.5 7.8-5.8 7.8-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+    <div class="hero-stats mono reveal">
+      <div class="s"><span class="n">64<span style="color:var(--ember)">%</span></span><span class="l">Leaner core</span></div>
+      <div class="s"><span class="n">11</span><span class="l">Thinking lenses</span></div>
+      <div class="s"><span class="n">4</span><span class="l">Autonomous phases</span></div>
+      <div class="s"><span class="n">4/4</span><span class="l">Agents must agree</span></div>
+    </div>
+  </div>
+</section>
+
+
+<!-- MARQUEE -->
+<div class="marquee">
+  <div class="marquee-track">
+    <span class="marquee-item"><span class="mark">◆</span> USE_EXISTING (≥80%)</span>
+    <span class="marquee-item"><span class="mark">◆</span> IMPROVE_EXISTING (50–79%)</span>
+    <span class="marquee-item"><span class="mark">◆</span> CREATE_NEW (&lt;50%)</span>
+    <span class="marquee-item"><span class="mark">◆</span> COMPOSE_CHAIN</span>
+    <span class="marquee-item"><span class="mark">◆</span> 11 THINKING LENSES</span>
+    <span class="marquee-item"><span class="mark">◆</span> MULTI-AGENT SYNTHESIS</span>
+    <span class="marquee-item"><span class="mark">◆</span> EVOLUTION ≥ 7/10</span>
+    <span class="marquee-item"><span class="mark">◆</span> CODEX + CLAUDE CODE</span>
+    <!-- dup -->
+    <span class="marquee-item"><span class="mark">◆</span> USE_EXISTING (≥80%)</span>
+    <span class="marquee-item"><span class="mark">◆</span> IMPROVE_EXISTING (50–79%)</span>
+    <span class="marquee-item"><span class="mark">◆</span> CREATE_NEW (&lt;50%)</span>
+    <span class="marquee-item"><span class="mark">◆</span> COMPOSE_CHAIN</span>
+    <span class="marquee-item"><span class="mark">◆</span> 11 THINKING LENSES</span>
+    <span class="marquee-item"><span class="mark">◆</span> MULTI-AGENT SYNTHESIS</span>
+    <span class="marquee-item"><span class="mark">◆</span> EVOLUTION ≥ 7/10</span>
+    <span class="marquee-item"><span class="mark">◆</span> CODEX + CLAUDE CODE</span>
+  </div>
+</div>
+
+<!-- TRIAGE -->
+<section class="block" id="triage">
+  <div class="sec-head reveal">
+    <div>
+      <div class="sec-kicker mono">Phase 0 · Triage</div>
+      <h2 class="sec-title">Before you forge, <em>you route.</em></h2>
+      <p class="sec-sub">Every input is evaluated against your existing skill library. SkillForge picks the cheapest path that still works — reusing, improving, composing, or creating only when necessary.</p>
+    </div>
+    <span class="sec-num">§ 01 / 05</span>
+  </div>
+
+  <div class="triage">
+    <div class="triage-stage reveal">
+      <div class="triage-input" id="triageInput">
+        <span class="mono prompt-prefix" style="color:var(--ink-mute)">skillforge&gt;</span>
+        <input
+          id="triageBox"
+          class="mono triage-box"
+          type="text"
+          placeholder="describe a skill… e.g. summarize PRs with breaking changes"
+          autocomplete="off"
+          spellcheck="false"
+          maxlength="140"
+        />
+        <span class="caret mono" id="triageCaret">▍</span>
+      </div>
+
+      <div class="triage-quick mono">
+        <button class="qp" data-q="create a skill for automated code review">⌁ code review</button>
+        <button class="qp" data-q="do I have a skill for generating Excel reports?">⌁ Excel reports</button>
+        <button class="qp" data-q="improve my debugging skill to handle stack tracebacks">⌁ improve debugger</button>
+        <button class="qp" data-q="compose skills for PR summary + changelog generation">⌁ compose chain</button>
+      </div>
+
+      <div class="routes" id="routes">
+        <div class="route" data-route="USE_EXISTING"><span class="tag">USE_EXISTING</span><span>match existing skill ≥ 80%</span><span class="score">—</span><span class="bar"><i></i></span></div>
+        <div class="route" data-route="IMPROVE"><span class="tag">IMPROVE</span><span>extend close match · 50–79%</span><span class="score">—</span><span class="bar"><i></i></span></div>
+        <div class="route" data-route="CREATE_NEW"><span class="tag">CREATE_NEW</span><span>no suitable skill · forge</span><span class="score">—</span><span class="bar"><i></i></span></div>
+        <div class="route" data-route="COMPOSE"><span class="tag">COMPOSE</span><span>chain multiple skills</span><span class="score">—</span><span class="bar"><i></i></span></div>
+      </div>
+      <div class="triage-legend mono">
+        <span id="route-status">ROUTE DECISION</span>
+        <span id="route-verdict" style="color:var(--ember)">→ awaiting prompt</span>
+      </div>
+    </div>
+
+    <div class="triage-copy reveal">
+      <h3>Four outcomes. One decision.</h3>
+      <p>The triage step is ruthless. It searches your skill directory, scores semantic match against intent, and commits to the lightest viable action. Most requests resolve without ever entering generation.</p>
+      <div class="triage-grid stagger">
+        <div class="cell"><div class="k">USE_EXISTING</div><div class="v">Match ≥ 80%</div><div class="d">// zero cost, skip generation</div></div>
+        <div class="cell"><div class="k">IMPROVE</div><div class="v">Match 50–79%</div><div class="d">// targeted edits only</div></div>
+        <div class="cell"><div class="k">CREATE_NEW</div><div class="v">Match &lt; 50%</div><div class="d">// full 4-phase forge</div></div>
+        <div class="cell"><div class="k">COMPOSE</div><div class="v">Multi-match</div><div class="d">// suggest a chain</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PHASES -->
+<section class="block" id="phases">
+  <div class="sec-head reveal">
+    <div>
+      <div class="sec-kicker mono">The 4-Phase Architecture</div>
+      <h2 class="sec-title">Analyze. Specify. Generate. <em>Approve.</em></h2>
+      <p class="sec-sub">A single skill traverses four autonomous phases before it is allowed out of the forge. Each phase has its own inputs, outputs, and quality gates.</p>
+    </div>
+    <span class="sec-num">§ 02 / 05</span>
+  </div>
+
+  <div class="pipeline reveal">
+    <div class="phases stagger" id="phases-grid">
+      <div class="phase active" data-ph="0">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#ff7a2d" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <div class="num">PHASE · 0</div>
+        <div class="nm">Triage</div>
+        <div class="ds">Classify the request. Route to re-use, improvement, composition, or new creation.</div>
+        <div class="foot">OUT → <b>route_decision</b></div>
+      </div>
+      <div class="phase" data-ph="1">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#ff7a2d" stroke-width="1.5"><path d="M4 4h16v5H4zM4 15h10v5H4zM18 13l3 3-3 3M18 13v6"/></svg>
+        <div class="num">PHASE · 1</div>
+        <div class="nm">Deep Analysis</div>
+        <div class="ds">11 thinking lenses pass over the problem. Regression loop interrogates every assumption.</div>
+        <div class="foot">OUT → <b>analysis_bundle</b></div>
+      </div>
+      <div class="phase" data-ph="2">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#ff7a2d" stroke-width="1.5"><path d="M6 3h9l4 4v14H6zM15 3v4h4M9 13h6M9 17h6M9 9h3"/></svg>
+        <div class="num">PHASE · 2</div>
+        <div class="nm">Specification</div>
+        <div class="ds">Insights codified into an XML spec. Degrees of freedom set per design decision.</div>
+        <div class="foot">OUT → <b>skill_spec.xml</b></div>
+      </div>
+      <div class="phase" data-ph="3">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#ff7a2d" stroke-width="1.5"><path d="M4 7l8-4 8 4-8 4zM4 7v10l8 4M20 7v10l-8 4M12 11v10"/></svg>
+        <div class="num">PHASE · 3</div>
+        <div class="nm">Generate + Iterate</div>
+        <div class="ds">Fresh context builds the skill from spec, then refines against the spec before review.</div>
+        <div class="foot">OUT → <b>skill_candidate</b></div>
+      </div>
+      <div class="phase" data-ph="4">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="#ff7a2d" stroke-width="1.5"><path d="M5 12l5 5L20 7"/><circle cx="12" cy="12" r="10"/></svg>
+        <div class="num">PHASE · 4</div>
+        <div class="nm">Synthesis Panel</div>
+        <div class="ds">Design, Audience, Evolution, Script agents. Unanimous approval or back to iterate.</div>
+        <div class="foot">OUT → <b>skill_approved</b></div>
+      </div>
+    </div>
+    <div class="track">
+      <div class="track-line"></div>
+      <div class="track-fill" id="track-fill"></div>
+      <div class="track-node" style="left:10%"></div>
+      <div class="track-node" style="left:30%"></div>
+      <div class="track-node" style="left:50%"></div>
+      <div class="track-node" style="left:70%"></div>
+      <div class="track-node" style="left:90%"></div>
+      <div class="track-spark" id="track-spark" style="left:10%"></div>
+    </div>
+  </div>
+</section>
+
+<!-- LENSES -->
+<section class="block" id="lenses">
+  <div class="sec-head reveal">
+    <div>
+      <div class="sec-kicker mono">Phase 1 · Deep Analysis</div>
+      <h2 class="sec-title">Eleven ways of <em>looking</em> at a problem.</h2>
+      <p class="sec-sub">Before a single line is generated, SkillForge passes your request through eleven distinct reasoning frames. No idea survives that hasn't been stress-tested from every angle.</p>
+    </div>
+    <span class="sec-num">§ 03 / 05</span>
+  </div>
+
+  <div class="lenses-wrap">
+    <div class="lenses-vis reveal">
+      <svg viewBox="-220 -220 440 440">
+        <defs>
+          <radialGradient id="lensCore" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#ff7a2d" stop-opacity=".5"/>
+            <stop offset="100%" stop-color="#ff7a2d" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <circle r="180" fill="none" stroke="#22252a"/>
+        <circle r="130" fill="none" stroke="#22252a" stroke-dasharray="2 6"/>
+        <circle r="80" fill="none" stroke="#22252a"/>
+        <circle r="60" fill="url(#lensCore)"/>
+        <!-- 11 spokes -->
+        <g id="spokes" stroke="#2e3138" stroke-width="1"></g>
+        <g id="dots"></g>
+        <g id="labels" font-family="JetBrains Mono" font-size="10" fill="#b9b2a4"></g>
+        <!-- Center label -->
+        <text text-anchor="middle" dy="-4" font-family="Inter" font-size="11" fill="#6c6a64" letter-spacing="2">ANALYSIS</text>
+        <text text-anchor="middle" dy="14" font-family="JetBrains Mono" font-size="16" fill="#ff7a2d">11 LENSES</text>
+      </svg>
+    </div>
+    <div class="reveal">
+      <div class="lens-list stagger" id="lens-list"></div>
+      <p style="color:var(--ink-mute);font-family:'JetBrains Mono',monospace;font-size:11px;margin-top:24px;letter-spacing:.14em">
+        * EACH LENS CARRIES A REGRESSION QUESTION SET. NO DECISION ESCAPES INTERROGATION.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- SYNTHESIS -->
+<section class="block" id="synthesis">
+  <div class="sec-head reveal">
+    <div>
+      <div class="sec-kicker mono">Phase 4 · Multi-agent Synthesis</div>
+      <h2 class="sec-title">A panel of experts. <em>Unanimous</em> or back to the fire.</h2>
+      <p class="sec-sub">Before a skill ships, four specialized agents independently score it. One dissent sends it back through iteration. Evolution must score at least 7/10 or the skill is rejected.</p>
+    </div>
+    <span class="sec-num">§ 04 / 05</span>
+  </div>
+
+  <div class="synthesis stagger" id="synthesis-grid">
+    <div class="agent" data-score="9">
+      <div class="ring"><svg viewBox="0 0 60 60"><circle class="bg" cx="30" cy="30" r="24"/><circle class="fg" cx="30" cy="30" r="24"/></svg><div class="score">9/10</div></div>
+      <h4>Design Agent</h4>
+      <p>Structure, naming, frontmatter, file layout. Checks that the skill follows the forge's patterns and is mechanically sound.</p>
+      <div class="stamp"><span><span class="dot2"></span>APPROVED</span><span>EVAL · DESIGN</span></div>
+    </div>
+    <div class="agent" data-score="8">
+      <div class="ring"><svg viewBox="0 0 60 60"><circle class="bg" cx="30" cy="30" r="24"/><circle class="fg" cx="30" cy="30" r="24"/></svg><div class="score">8/10</div></div>
+      <h4>Audience Agent</h4>
+      <p>Clarity, discoverability, completeness. Will the model actually load this skill at the right moment, and succeed once it does?</p>
+      <div class="stamp"><span><span class="dot2"></span>APPROVED</span><span>EVAL · AUDIENCE</span></div>
+    </div>
+    <div class="agent" data-score="7">
+      <div class="ring"><svg viewBox="0 0 60 60"><circle class="bg" cx="30" cy="30" r="24"/><circle class="fg" cx="30" cy="30" r="24"/></svg><div class="score">7/10</div></div>
+      <h4>Evolution Agent</h4>
+      <p>Timelessness and extensibility. Will this skill still be correct after the next model release? Minimum score 7/10.</p>
+      <div class="stamp"><span><span class="dot2"></span>APPROVED</span><span>EVAL · EVOLUTION</span></div>
+    </div>
+    <div class="agent" data-score="9">
+      <div class="ring"><svg viewBox="0 0 60 60"><circle class="bg" cx="30" cy="30" r="24"/><circle class="fg" cx="30" cy="30" r="24"/></svg><div class="score">9/10</div></div>
+      <h4>Script Agent</h4>
+      <p>Conditional. When scripts are present, validates code quality, safety, and degrees-of-freedom fit.</p>
+      <div class="stamp"><span><span class="dot2"></span>APPROVED</span><span>EVAL · SCRIPTS</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- PRINCIPLES -->
+<section class="block">
+  <div class="sec-head reveal">
+    <div>
+      <div class="sec-kicker mono">Core doctrine</div>
+      <h2 class="sec-title">Three principles. <em>No exceptions.</em></h2>
+    </div>
+    <span class="sec-num">§ 05 / 05</span>
+  </div>
+
+  <div class="principles reveal">
+    <div class="principle">
+      <div class="pi-num">PRINCIPLE I</div>
+      <h3>Engineer <em>for agents.</em></h3>
+      <p>Context windows are a public good. Every line in SKILL.md competes with the user's actual work. Slim cores, lazy-loaded references, simplified frontmatter.</p>
+      <ul>
+        <li>SKILL.md &lt; 500 lines</li>
+        <li>name + description frontmatter</li>
+        <li>Automated validation</li>
+      </ul>
+    </div>
+    <div class="principle">
+      <div class="pi-num">PRINCIPLE II</div>
+      <h3>Systematize <em>rigor.</em></h3>
+      <p>Quality is not a phase — it is the substrate. Regression questioning, eleven lenses, multi-agent review, degrees-of-freedom assessment at every decision point.</p>
+      <ul>
+        <li>4-phase architecture</li>
+        <li>Regression loop</li>
+        <li>Unanimous synthesis</li>
+      </ul>
+    </div>
+    <div class="principle">
+      <div class="pi-num">PRINCIPLE III</div>
+      <h3>Design <em>for evolution.</em></h3>
+      <p>A skill that works once is an artifact. A skill that keeps working is infrastructure. Evolution scoring is a hard gate, not a nice-to-have.</p>
+      <ul>
+        <li>Dedicated Evolution agent</li>
+        <li>Timelessness ≥ 7/10</li>
+        <li>Iteration as a formal step</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- INSTALL -->
+<section class="block" id="install">
+  <div class="install reveal">
+    <div class="install-copy">
+      <div class="sec-kicker mono" style="margin-bottom:14px">Install · v5.1.0</div>
+      <h3>Clone it. <em>Forge with it.</em></h3>
+      <p>Works with Codex CLI and Claude Code. Excludes repo-only files like README.md automatically via <span class="mono" style="color:var(--ember)">.skillignore</span>.</p>
+      <div class="install-req">
+        <div class="r">REQUIRES<b>Codex / Claude Code CLI</b></div>
+        <div class="r">PYTHON<b>3.8+</b></div>
+        <div class="r">LICENSE<b>MIT</b></div>
+      </div>
+      <div style="margin-top:36px">
+        <a href="https://github.com/tripleyak/SkillForge" target="_blank" class="btn primary">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5C5.7.5.5 5.7.5 12c0 5.1 3.3 9.4 7.8 10.9.6.1.8-.2.8-.5v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.6-1.3-1.6-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.4-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.2 1.2.9-.3 1.9-.4 2.9-.4s2 .1 2.9.4c2.2-1.5 3.2-1.2 3.2-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.3c0 .3.2.6.8.5 4.5-1.5 7.8-5.8 7.8-10.9C23.5 5.7 18.3.5 12 .5z"/></svg>
+          tripleyak/SkillForge
+        </a>
+      </div>
+    </div>
+
+    <div class="terminal">
+      <div class="term-bar">
+        <span class="d r"></span><span class="d y"></span><span class="d g"></span>
+        <span style="margin-left:14px">~/forge</span>
+        <span class="t">bash · 80×24</span>
+      </div>
+      <div class="term-body" id="term">
+        <span class="line"><span class="cm"># clone</span></span>
+        <span class="line"><span class="pr">$</span> git clone <span class="k">https://github.com/tripleyak/SkillForge.git</span> /tmp/skillforge</span>
+        <span class="line"><span class="out">Cloning into '/tmp/skillforge'... done.</span></span>
+        <span class="line">&nbsp;</span>
+        <span class="line"><span class="cm"># install for Claude Code</span></span>
+        <span class="line"><span class="pr">$</span> cp -r /tmp/skillforge <span class="k">~/.claude/skills/skillforge</span></span>
+        <span class="line">&nbsp;</span>
+        <span class="line"><span class="cm"># scaffold a new skill</span></span>
+        <span class="line"><span class="pr">$</span> python scripts/init_skill.py my-skill</span>
+        <span class="line"><span class="ok">✓</span> <span class="out">SKILL.md created (313 lines)</span></span>
+        <span class="line"><span class="ok">✓</span> <span class="out">references/ scaffolded</span></span>
+        <span class="line"><span class="ok">✓</span> <span class="out">scripts/ scaffolded</span></span>
+        <span class="line">&nbsp;</span>
+        <span class="line"><span class="pr">$</span> <span class="out">SkillForge: create a skill for code review<span class="cursor"></span></span></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="foot-wrap">
+    <div class="mono">SKILLFORGE · v5.1.0 · MIT LICENSE · © 2026 TRIPLEYAK</div>
+    <div class="foot-links mono">
+      <a href="https://github.com/tripleyak/SkillForge" target="_blank">GITHUB</a>
+      <a href="https://github.com/tripleyak/SkillForge/blob/main/SKILL.md" target="_blank">SKILL.MD</a>
+      <a href="https://github.com/tripleyak/SkillForge/releases" target="_blank">RELEASES</a>
+      <a href="https://github.com/tripleyak/SkillForge/blob/main/LICENSE" target="_blank">LICENSE</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ---------------- Reveal on scroll ---------------- */
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){ e.target.classList.add('in'); }
+  });
+},{threshold:.12});
+document.querySelectorAll('.reveal, .stagger').forEach(el=>io.observe(el));
+// Fallback: after 200ms, force-reveal anything already in viewport top
+setTimeout(()=>{
+  document.querySelectorAll('.hero .reveal, .hero .stagger').forEach(el=>el.classList.add('in'));
+},150);
+
+/* ---------------- Site-wide ambient fire (canvas, viewport-fixed) ---------------- */
+(function(){
+  const canvas = document.getElementById('fireCanvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let w=0,h=0,dpr=Math.min(window.devicePixelRatio||1, 2);
+  function resize(){
+    const r = canvas.getBoundingClientRect();
+    w = r.width; h = r.height;
+    canvas.width = Math.floor(w*dpr); canvas.height = Math.floor(h*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    makePlumes();
+  }
+
+  // Heat plumes scattered across the viewport — densest at the bottom,
+  // a couple drifting higher so warmth shows through every section.
+  const plumes = [];
+  function makePlumes(){
+    plumes.length = 0;
+    // Bottom band: gentle warm wash
+    const nBottom = 6;
+    for(let i=0;i<nBottom;i++){
+      plumes.push({
+        x: (i/(nBottom-1))*w + (Math.random()*100-50),
+        y: h - 10 + Math.random()*40,
+        r: 280 + Math.random()*260,
+        hue: 22 + Math.random()*14,        // 22–36 = soft amber, less red
+        sat: 60,                            // desaturated
+        light: 48 + Math.random()*6,
+        a: 0.06 + Math.random()*0.05,       // much subtler
+        ph: Math.random()*Math.PI*2,
+        sp: 0.25 + Math.random()*0.4,
+        dx: (Math.random()*2-1)*0.10
+      });
+    }
+    // Mid band: barely-there warmth
+    const nMid = 3;
+    for(let i=0;i<nMid;i++){
+      plumes.push({
+        x: Math.random()*w,
+        y: h*0.55 + Math.random()*h*0.2,
+        r: 240 + Math.random()*200,
+        hue: 24 + Math.random()*12,
+        sat: 55,
+        light: 46 + Math.random()*5,
+        a: 0.025 + Math.random()*0.025,
+        ph: Math.random()*Math.PI*2,
+        sp: 0.2 + Math.random()*0.3,
+        dx: (Math.random()*2-1)*0.06
+      });
+    }
+    // Faint upper accents
+    plumes.push({
+      x: w*0.85, y: h*0.18, r: 280,
+      hue: 26, sat: 50, light: 50, a: 0.022,
+      ph: Math.random()*Math.PI*2, sp: 0.25, dx: 0.04
+    });
+    plumes.push({
+      x: w*0.12, y: h*0.32, r: 260,
+      hue: 24, sat: 50, light: 48, a: 0.02,
+      ph: Math.random()*Math.PI*2, sp: 0.22, dx: -0.04
+    });
+  }
+  resize(); window.addEventListener('resize', resize);
+
+  // Cursor tracking — global pointer in viewport coords
+  const mouse = { x: -9999, y: -9999, px: -9999, py: -9999, vx: 0, vy: 0, active: false, lastMove: 0 };
+  function onMove(e){
+    const nx = e.clientX, ny = e.clientY;
+    mouse.vx = nx - mouse.x; mouse.vy = ny - mouse.y;
+    mouse.x = nx; mouse.y = ny;
+    mouse.active = true; mouse.lastMove = performance.now();
+    spawnSparks();
+  }
+  window.addEventListener('pointermove', onMove, {passive:true});
+  window.addEventListener('pointerdown', onMove, {passive:true});
+
+  // Cursor sparks — soft, sparkly glints that scatter in all directions around the pointer
+  const sparks = [];
+  function spawnSparks(){
+    const speed = Math.hypot(mouse.vx, mouse.vy);
+    if(speed < 1.5) return;
+    // Probabilistic spawn: more movement = more likely, but never many at once
+    const spawnChance = Math.min(0.9, speed/18);
+    if(Math.random() > spawnChance) return;
+    const n = 1 + (Math.random() < 0.35 ? 1 : 0);
+    for(let i=0;i<n;i++){
+      // Scatter in a FULL circle around the cursor, not biased to motion direction
+      const ang = Math.random() * Math.PI * 2;
+      const spd = 0.15 + Math.random()*0.55;       // very slow
+      // Spawn at a small random offset from the cursor, not right at it
+      const offR = Math.random() * 14;
+      sparks.push({
+        x: mouse.x + Math.cos(ang) * offR,
+        y: mouse.y + Math.sin(ang) * offR,
+        vx: Math.cos(ang) * spd + (Math.random()*0.3 - 0.15),
+        vy: Math.sin(ang) * spd + (Math.random()*0.3 - 0.15) - 0.15, // faint upward bias
+        life: 1,
+        decay: 0.014 + Math.random()*0.018,
+        hue: 20 + Math.random()*16,
+        size: 0.4 + Math.random()*0.7,
+        twinkle: Math.random() * Math.PI * 2
+      });
+    }
+    if(sparks.length > 180) sparks.splice(0, sparks.length - 180);
+  }
+
+  let t = 0, last = performance.now();
+  function frame(now){
+    const dt = Math.min(64, now - last); last = now;
+    t += dt*0.001;
+
+    // Subtle dark wash to preserve glow buildup without smearing
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(11,12,14,0.20)';
+    ctx.fillRect(0,0,w,h);
+
+    ctx.globalCompositeOperation = 'lighter';
+    for(const p of plumes){
+      const breathe = 0.7 + Math.sin(t*p.sp + p.ph)*0.3;
+      const yo = Math.sin(t*p.sp*0.6 + p.ph)*22;
+      const xo = Math.cos(t*p.sp*0.4 + p.ph)*50 + p.dx*t*30;
+      const cx = p.x + xo;
+      const cy = p.y + yo;
+      // Proximity brightening: plumes near cursor get a soft boost
+      let proxBoost = 1;
+      if(mouse.active){
+        const d = Math.hypot(cx - mouse.x, cy - mouse.y);
+        const prox = Math.max(0, 1 - d/420);
+        proxBoost = 1 + prox*0.45;
+      }
+      const r  = p.r * (0.85 + breathe*0.25);
+      const aMul = breathe * proxBoost;
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      g.addColorStop(0,    `hsla(${p.hue}, ${p.sat}%, ${p.light+8}%, ${p.a*aMul})`);
+      g.addColorStop(0.35, `hsla(${p.hue-4}, ${p.sat}%, ${p.light}%,   ${p.a*0.55*aMul})`);
+      g.addColorStop(1,    `hsla(${p.hue-8}, ${p.sat}%, 30%, 0)`);
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI*2); ctx.fill();
+    }
+
+    // Cursor-following warm light — a soft halo that pools at the cursor
+    if(mouse.active){
+      const idleMs = now - mouse.lastMove;
+      const cursorPulse = 1 + Math.sin(t*3)*0.06;
+      // fade the halo out after 1.5s of no movement but keep a resting glow
+      const fade = idleMs < 1500 ? 1 : Math.max(.25, 1 - (idleMs-1500)/3000);
+      const cr = 170 * cursorPulse;
+      const cg = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, cr);
+      cg.addColorStop(0,    `hsla(26, 70%, 55%, ${0.10*fade})`);
+      cg.addColorStop(0.3,  `hsla(22, 65%, 48%, ${0.05*fade})`);
+      cg.addColorStop(1,    `hsla(18, 60%, 30%, 0)`);
+      ctx.fillStyle = cg;
+      ctx.beginPath(); ctx.arc(mouse.x, mouse.y, cr, 0, Math.PI*2); ctx.fill();
+    }
+
+    // Sparks — drift in all directions, twinkle, fade to nothing
+    for(let i=sparks.length-1;i>=0;i--){
+      const s = sparks[i];
+      s.x += s.vx; s.y += s.vy;
+      s.vy -= 0.012;                       // gentle buoyancy
+      s.vx *= 0.98; s.vy *= 0.98;          // drag (slows them quickly into a drift)
+      s.life -= s.decay;
+      s.twinkle += 0.25;
+      if(s.life <= 0){ sparks.splice(i,1); continue; }
+      const twink = 0.55 + Math.sin(s.twinkle) * 0.45;
+      const a = s.life * 0.32 * twink;
+      const sr = s.size * (1 + (1-s.life)*0.3);
+      // Diffuse halo
+      const sg = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, sr*6);
+      sg.addColorStop(0,    `hsla(${s.hue}, 75%, 60%, ${a*0.7})`);
+      sg.addColorStop(0.35, `hsla(${s.hue-4}, 70%, 45%, ${a*0.25})`);
+      sg.addColorStop(1,    `hsla(${s.hue-8}, 70%, 30%, 0)`);
+      ctx.fillStyle = sg;
+      ctx.beginPath(); ctx.arc(s.x, s.y, sr*6, 0, Math.PI*2); ctx.fill();
+      // tiny glint core
+      ctx.fillStyle = `hsla(${s.hue+8}, 90%, 72%, ${a*0.85})`;
+      ctx.beginPath(); ctx.arc(s.x, s.y, sr*0.7, 0, Math.PI*2); ctx.fill();
+    }
+
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+
+/* ---------------- Site-wide ember drift ---------------- */
+(function(){
+  const layer = document.getElementById('emberLayer');
+  if(!layer) return;
+  function spawn(){
+    const e = document.createElement('div');
+    const cls = Math.random();
+    e.className = 'ember-dot' + (cls<0.18?' bright':cls>0.7?' cool':'');
+    // Bias spawns to the bottom 40% of the viewport, with occasional mid-screen ones
+    const x = Math.random()*100;
+    const startY = (Math.random() < 0.85)
+      ? 60 + Math.random()*40   // bottom band
+      : 30 + Math.random()*30;  // mid drift
+    const driftX = (Math.random()*2-1) * 100;
+    const driftY = -(380 + Math.random()*520);
+    const dur = 6 + Math.random()*8;
+    const size = 2 + Math.random()*2.5;
+    e.style.left = x + '%';
+    e.style.top = startY + '%';
+    e.style.width = size+'px'; e.style.height = size+'px';
+    e.style.setProperty('--dx', driftX+'px');
+    e.style.setProperty('--dy', driftY+'px');
+    e.style.animationDuration = dur+'s';
+    e.style.animationDelay = (Math.random()*-2)+'s';
+    layer.appendChild(e);
+    setTimeout(()=>e.remove(), dur*1000+200);
+  }
+  // initial burst
+  for(let i=0;i<40;i++) setTimeout(spawn, i*100);
+  setInterval(spawn, 180);
+})();
+
+/* ---------------- Forge-letter headline animation ---------------- */
+(function(){
+  const hl = document.querySelector('h1.headline[data-forge]');
+  if(!hl) return;
+
+  // Walk the h1, splitting text nodes into .fl letter spans while preserving inner tags
+  const letters = [];
+  function split(node){
+    const out = document.createDocumentFragment();
+    node.childNodes.forEach(child => {
+      if(child.nodeType === Node.TEXT_NODE){
+        const text = child.textContent;
+        for(const ch of text){
+          if(ch === ' ' || ch === '\u00A0'){
+            out.appendChild(document.createTextNode(' '));
+          } else {
+            const span = document.createElement('span');
+            span.className = 'fl';
+            span.textContent = ch;
+            out.appendChild(span);
+            letters.push(span);
+          }
+        }
+      } else if(child.nodeType === Node.ELEMENT_NODE){
+        if(child.tagName === 'BR'){
+          out.appendChild(child.cloneNode());
+          return;
+        }
+        const clone = child.cloneNode(false);
+        // recursively split the child's contents
+        const innerOut = split(child);
+        clone.appendChild(innerOut);
+        out.appendChild(clone);
+      }
+    });
+    return out;
+  }
+
+  // Recursive split needs to also push per-letter spans into `letters`
+  // Simpler: traverse text nodes + wrap, but preserve element structure.
+  // Rewrite: do an in-place text-node wrap walker.
+  letters.length = 0; // discard above
+  const walker = document.createTreeWalker(hl, NodeFilter.SHOW_TEXT, null);
+  const textNodes = [];
+  let n;
+  while((n = walker.nextNode())) textNodes.push(n);
+
+  textNodes.forEach(tn => {
+    // Collapse internal whitespace and trim leading/trailing —
+    // h1's HTML source has newlines + indent that would otherwise become nbsp.
+    const raw = tn.textContent.replace(/\s+/g, ' ');
+    // If this text node is purely whitespace, drop it
+    if(!raw.trim() && raw === ' '){
+      // keep a thin space only if it sits BETWEEN two element siblings (e.g. between words)
+      const prev = tn.previousSibling, next = tn.nextSibling;
+      if(prev && next){
+        tn.textContent = ' ';
+        return;
+      } else {
+        tn.parentNode.removeChild(tn);
+        return;
+      }
+    }
+    const frag = document.createDocumentFragment();
+    for(const ch of raw){
+      if(ch === ' '){
+        frag.appendChild(document.createTextNode(' '));
+      } else {
+        const span = document.createElement('span');
+        span.className = 'fl';
+        span.textContent = ch;
+        frag.appendChild(span);
+        letters.push(span);
+      }
+    }
+    tn.parentNode.replaceChild(frag, tn);
+  });
+
+  // Stagger the animation. Hold animations paused until we schedule them.
+  letters.forEach(l => l.style.animationPlayState = 'paused');
+
+  function run(){
+    letters.forEach((l, i) => {
+      const delay = 120 + i*55 + Math.random()*40;
+      setTimeout(() => {
+        l.style.animationPlayState = 'running';
+      }, delay);
+    });
+  }
+
+  // Run on load (allow fonts to settle a frame)
+  if(document.readyState === 'complete'){
+    requestAnimationFrame(run);
+  } else {
+    window.addEventListener('load', () => requestAnimationFrame(run), {once:true});
+  }
+})();
+
+/* ---------------- Forge phase cycling (corner readout) ---------------- */
+const phaseShort = ['PHASE 0 · TRIAGE','PHASE 1 · ANALYSIS','PHASE 2 · SPEC','PHASE 3 · GENERATE','PHASE 4 · PANEL'];
+let _ph = 0;
+function tickPhase(){
+  _ph = (_ph+1) % phaseShort.length;
+  const el = document.getElementById('forge-phase');
+  if(el) el.textContent = phaseShort[_ph];
+}
+setInterval(tickPhase, 2400);
+
+
+/* ---------------- Interactive Triage Demo ---------------- */
+(function(){
+  const stage = document.getElementById('triage');
+  if(!stage) return;
+  const boxEl    = document.getElementById('triageBox');
+  const caretEl  = document.getElementById('triageCaret');
+  const wrapEl   = document.getElementById('triageInput');
+  const routesEl = document.getElementById('routes');
+  const verdictEl= document.getElementById('route-verdict');
+  const statusEl = document.getElementById('route-status');
+  const quickBtns= stage.querySelectorAll('.triage-quick .qp');
+
+  const ROUTES = ['USE_EXISTING','IMPROVE','CREATE_NEW','COMPOSE'];
+  const sleep = ms => new Promise(r=>setTimeout(r,ms));
+
+  // --- Heuristic classifier ---------------------------------
+  // Returns {scores: {route:0-100}, winner: string, reason: string}
+  function analyze(raw){
+    const s = raw.trim().toLowerCase();
+    if(!s) return null;
+
+    // Base noise — every route has a baseline so bars aren't empty
+    const sc = {USE_EXISTING: 25, IMPROVE: 25, CREATE_NEW: 25, COMPOSE: 22};
+
+    // Signals
+    const has = (re) => re.test(s);
+    const count = (re) => (s.match(re) || []).length;
+
+    // CREATE_NEW signals
+    if(has(/\b(create|build|make|new|forge|generate|design)\b/)) sc.CREATE_NEW += 38;
+    if(has(/\b(from scratch|greenfield)\b/)) sc.CREATE_NEW += 20;
+    if(has(/\b(a skill for|a tool for|a helper that)\b/)) sc.CREATE_NEW += 15;
+
+    // IMPROVE signals
+    if(has(/\b(improve|enhance|extend|upgrade|refactor|fix|handle|support|add)\b/)) sc.IMPROVE += 36;
+    if(has(/\bmy\s+\w+\s+skill\b/)) sc.IMPROVE += 18;
+    if(has(/\bto\s+(also|handle|support)\b/)) sc.IMPROVE += 12;
+
+    // USE_EXISTING signals
+    if(has(/\b(do i have|is there|find|have a|existing|reuse|already)\b/)) sc.USE_EXISTING += 42;
+    if(has(/\?\s*$/)) sc.USE_EXISTING += 10;
+    if(has(/\b(for|that can)\s+\w+/)) sc.USE_EXISTING += 6;
+
+    // COMPOSE signals
+    if(has(/\b(compose|chain|pipeline|combine|and then|then)\b/)) sc.COMPOSE += 40;
+    if(has(/\+/)) sc.COMPOSE += 18;
+    if(count(/\band\b/g) >= 1) sc.COMPOSE += 12;
+    if(count(/\band\b/g) >= 2) sc.COMPOSE += 14;
+    if(has(/\b(multi|multiple|together)\b/)) sc.COMPOSE += 10;
+
+    // Length nudge — very short queries lean USE_EXISTING (lookup-like)
+    if(s.length < 25) sc.USE_EXISTING += 8;
+    // Longer queries lean CREATE_NEW / IMPROVE
+    if(s.length > 70) { sc.CREATE_NEW += 6; sc.IMPROVE += 4; }
+
+    // Tiny per-route jitter so sequential runs feel alive
+    for(const k of ROUTES) sc[k] += Math.random()*4 - 2;
+
+    // Clamp 5..96
+    for(const k of ROUTES) sc[k] = Math.max(5, Math.min(96, Math.round(sc[k])));
+
+    // Pick winner
+    let winner = 'CREATE_NEW', best = -1;
+    for(const k of ROUTES){ if(sc[k] > best){ best = sc[k]; winner = k; } }
+
+    // Reason text
+    const reasons = {
+      USE_EXISTING: 'existing skill match detected',
+      IMPROVE:      'targeted edits to an existing skill',
+      CREATE_NEW:   'no suitable match · full forge',
+      COMPOSE:      'multi-step workflow · chain skills'
+    };
+    return {scores: sc, winner, reason: reasons[winner]};
+  }
+
+  // --- UI application ---------------------------------------
+  const routeEls = {};
+  routesEl.querySelectorAll('.route').forEach(el => {
+    routeEls[el.dataset.route] = {
+      el,
+      bar: el.querySelector('.bar i'),
+      score: el.querySelector('.score')
+    };
+  });
+
+  let runToken = 0;
+
+  async function applyAnalysis(analysis){
+    const myToken = ++runToken;
+
+    // reset state
+    for(const k of ROUTES){
+      routeEls[k].el.classList.remove('match');
+      routeEls[k].bar.style.width = '0%';
+      routeEls[k].score.textContent = '—';
+    }
+    if(!analysis){
+      statusEl.textContent = 'ROUTE DECISION';
+      verdictEl.textContent = '→ awaiting prompt';
+      return;
+    }
+
+    statusEl.textContent = 'ANALYZING…';
+    verdictEl.textContent = '→ scoring 4 routes';
+    verdictEl.style.color = 'var(--ink-dim)';
+
+    await sleep(250);
+    if(myToken !== runToken) return;
+
+    // Fill bars in order — slight stagger so it feels like work
+    for(const k of ROUTES){
+      const s = analysis.scores[k];
+      routeEls[k].bar.style.width = s + '%';
+      routeEls[k].score.textContent = '0.' + String(s).padStart(2,'0');
+      await sleep(180);
+      if(myToken !== runToken) return;
+    }
+
+    await sleep(350);
+    if(myToken !== runToken) return;
+
+    // Highlight winner
+    routeEls[analysis.winner].el.classList.add('match');
+    statusEl.textContent = 'ROUTE DECISION';
+    verdictEl.innerHTML = `→ <strong>${analysis.winner}</strong> · confidence 0.${analysis.scores[analysis.winner]}`;
+    verdictEl.style.color = 'var(--ember)';
+  }
+
+  // --- Input handling ---------------------------------------
+  let debounceTimer = null;
+  let idleTimer = null;
+  let userEngaged = false;
+
+  function runAnalysis(text){
+    const a = analyze(text);
+    applyAnalysis(a);
+  }
+
+  boxEl.addEventListener('input', () => {
+    userEngaged = true;
+    stopAutoDemo();
+    wrapEl.classList.add('typing');
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      runAnalysis(boxEl.value);
+    }, 320);
+  });
+
+  boxEl.addEventListener('focus', () => {
+    userEngaged = true;
+    stopAutoDemo();
+    wrapEl.classList.add('typing');
+  });
+
+  boxEl.addEventListener('blur', () => {
+    if(!boxEl.value) wrapEl.classList.remove('typing');
+    // resume autodemo after 12s of idle
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      if(!document.activeElement || document.activeElement !== boxEl){
+        userEngaged = false;
+        startAutoDemo();
+      }
+    }, 12000);
+  });
+
+  boxEl.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter'){
+      clearTimeout(debounceTimer);
+      runAnalysis(boxEl.value);
+    }
+  });
+
+  // Quick-prompt buttons
+  quickBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      userEngaged = true;
+      stopAutoDemo();
+      boxEl.focus();
+      // Type the prompt character-by-character for drama
+      const target = btn.dataset.q;
+      boxEl.value = '';
+      let i = 0;
+      (function step(){
+        if(i > target.length) { runAnalysis(target); return; }
+        boxEl.value = target.slice(0, i);
+        i++;
+        setTimeout(step, 22 + Math.random()*20);
+      })();
+    });
+  });
+
+  // --- Auto-demo (idle) -------------------------------------
+  const demoPrompts = [
+    "do I have a skill for generating Excel reports?",
+    "improve my debugging skill to handle stack tracebacks",
+    "create a skill for automated code review on PRs",
+    "compose skills for PR summary and changelog generation"
+  ];
+  let demoIx = 0, demoActive = false, demoToken = 0;
+
+  async function autoDemoLoop(){
+    demoActive = true;
+    const mine = ++demoToken;
+    while(demoActive && mine === demoToken){
+      if(userEngaged) break;
+      const p = demoPrompts[demoIx];
+      // Type
+      boxEl.value = '';
+      for(let i=0;i<=p.length;i++){
+        if(mine !== demoToken || userEngaged) return;
+        boxEl.value = p.slice(0,i);
+        await sleep(26 + Math.random()*22);
+      }
+      if(mine !== demoToken || userEngaged) return;
+      await sleep(250);
+      runAnalysis(p);
+      await sleep(4200);
+      if(mine !== demoToken || userEngaged) return;
+      // Clear and continue
+      demoIx = (demoIx+1) % demoPrompts.length;
+    }
+    demoActive = false;
+  }
+
+  function startAutoDemo(){
+    if(demoActive) return;
+    autoDemoLoop();
+  }
+  function stopAutoDemo(){
+    demoActive = false;
+    demoToken++; // invalidate any running loop
+  }
+
+  // Kick off when section enters viewport
+  const obs = new IntersectionObserver((es)=>{
+    es.forEach(e=>{
+      if(e.isIntersecting && !userEngaged){
+        startAutoDemo();
+        obs.disconnect();
+      }
+    });
+  }, {threshold:.25});
+  obs.observe(stage);
+})();
+
+/* ---------------- Lenses SVG ---------------- */
+const lenses = [
+  "First Principles","Inversion","Second-Order Effects","Pre-Mortem",
+  "Systems Thinking","Devil's Advocate","Constraints","Pareto",
+  "Root Cause","Comparative","Opportunity Cost"
+];
+const spokes = document.getElementById('spokes');
+const dots = document.getElementById('dots');
+const labels = document.getElementById('labels');
+const lensList = document.getElementById('lens-list');
+if(spokes && dots && labels){
+  const R = 150;
+  const R2 = 180;
+  lenses.forEach((name,i)=>{
+    const a = (i / lenses.length) * Math.PI*2 - Math.PI/2;
+    const x = Math.cos(a)*R, y = Math.sin(a)*R;
+    const xL = Math.cos(a)*R2, yL = Math.sin(a)*R2;
+    // spoke
+    const ln = document.createElementNS('http://www.w3.org/2000/svg','line');
+    ln.setAttribute('x1',0);ln.setAttribute('y1',0);ln.setAttribute('x2',x);ln.setAttribute('y2',y);
+    spokes.appendChild(ln);
+    // dot
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',5);
+    c.setAttribute('fill','#ff7a2d');
+    c.setAttribute('data-i',i);
+    dots.appendChild(c);
+    const pulse = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    pulse.setAttribute('cx',x);pulse.setAttribute('cy',y);pulse.setAttribute('r',10);
+    pulse.setAttribute('fill','#ff7a2d');pulse.setAttribute('opacity','.18');
+    dots.appendChild(pulse);
+    // label
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x',xL);t.setAttribute('y',yL+4);
+    t.setAttribute('text-anchor', Math.cos(a) > 0.2 ? 'start' : Math.cos(a) < -0.2 ? 'end' : 'middle');
+    t.textContent = String(i+1).padStart(2,'0');
+    labels.appendChild(t);
+
+    // list chip
+    const chip = document.createElement('div');
+    chip.className = 'lens-chip';
+    chip.dataset.i = i;
+    chip.innerHTML = `<span class="ni">L${String(i+1).padStart(2,'0')}</span><span>${name}</span>`;
+    lensList.appendChild(chip);
+  });
+
+  // rotating active lens
+  let active = 0;
+  function cycleLens(){
+    document.querySelectorAll('.lens-chip').forEach(c=>c.classList.remove('on'));
+    const ch = document.querySelector(`.lens-chip[data-i="${active}"]`);
+    if(ch) ch.classList.add('on');
+    // scale dot
+    document.querySelectorAll('#dots circle').forEach((c,idx)=>{
+      // 2 circles per lens
+      const lensIx = Math.floor(idx/2);
+      const main = idx%2===0;
+      if(lensIx===active){
+        c.setAttribute('r', main ? 7 : 16);
+        c.setAttribute('fill','#ffb066');
+      } else {
+        c.setAttribute('r', main ? 4 : 8);
+        c.setAttribute('fill','#ff7a2d');
+        c.setAttribute('opacity', main ? 1 : .15);
+      }
+    });
+    active = (active+1)%lenses.length;
+  }
+  cycleLens();
+  setInterval(cycleLens, 900);
+
+  // hover
+  lensList.addEventListener('mouseover', (e)=>{
+    const chip = e.target.closest('.lens-chip');
+    if(!chip) return;
+    active = Number(chip.dataset.i);
+    cycleLens();
+  });
+}
+
+/* ---------------- Synthesis rings ---------------- */
+const synthObs = new IntersectionObserver((es)=>{
+  es.forEach(e=>{
+    if(e.isIntersecting){
+      document.querySelectorAll('#synthesis-grid .agent').forEach((a,i)=>{
+        const score = Number(a.dataset.score);
+        const ring = a.querySelector('.fg');
+        const circumference = 2*Math.PI*24;
+        ring.setAttribute('stroke-dasharray', circumference);
+        setTimeout(()=>{
+          ring.style.strokeDashoffset = circumference * (1 - score/10);
+        }, i*180);
+      });
+      synthObs.disconnect();
+    }
+  });
+},{threshold:.25});
+const synthEl = document.getElementById('synthesis');
+if(synthEl) synthObs.observe(synthEl);
+
+</script>
+</body>
+</html>
