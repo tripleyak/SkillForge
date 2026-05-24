@@ -1,10 +1,14 @@
 # Files excluded from skill packaging and installation.
 # These exist in the repo but are not part of the skill itself.
 README.md
+CONTEXT.md
+docs/adr
+index.html
 LICENSE
 .git
 .gitignore
 .skillignore
+.vercel
 .DS_Store
 __pycache__
 *.pyc

@@ -262,6 +262,15 @@ DOMAIN_SYNONYMS = {
 }
 
 
+def phrase_in_text(phrase: str, text: str) -> bool:
+    """Return True when phrase appears as a whole token/phrase."""
+    phrase = phrase.strip().lower()
+    if not phrase:
+        return False
+    pattern = rf"(?<![a-z0-9]){re.escape(phrase)}(?![a-z0-9])"
+    return re.search(pattern, text.lower()) is not None
+
+
 def detect_query_domains(query: str) -> List[Tuple[str, List[str]]]:
     """
     Detect which domains a query relates to using universal synonyms.
@@ -275,7 +284,7 @@ def detect_query_domains(query: str) -> List[Tuple[str, List[str]]]:
     for domain, synonyms in DOMAIN_SYNONYMS.items():
         matched_terms = []
         for term in synonyms:
-            if term in query_lower:
+            if phrase_in_text(term, query_lower):
                 matched_terms.append(term)
         if matched_terms:
             detected.append((domain, matched_terms))
@@ -364,7 +373,7 @@ def calculate_match_score(query: str, skill: Dict) -> Tuple[float, List[str]]:
             break
 
     # Step 4: Direct skill name match (works for any skill name)
-    if skill_name in query_lower:
+    if phrase_in_text(skill_name, query_lower):
         score += 35
         reasons.append(f"name match: {skill_name}")
     else:
@@ -377,7 +386,7 @@ def calculate_match_score(query: str, skill: Dict) -> Tuple[float, List[str]]:
 
     # Step 5: Trigger match (works for any skill's triggers)
     for trigger in skill_triggers:
-        if trigger in query_lower:
+        if phrase_in_text(trigger, query_lower):
             score += 25
             reasons.append(f"trigger: {trigger}")
             break
@@ -449,8 +458,11 @@ def find_matching_skills(query: str, skills: List[Dict], limit: int = 5, signals
                 "score": min(100, score),
                 "reasons": reasons,
                 "source": skill.get("source"),
+                "path": skill.get("path"),
                 "description": skill.get("description", "")[:100],
                 "domains": skill.get("domains", []),
+                "keywords": skill.get("keywords", []),
+                "triggers": skill.get("triggers", []),
             })
 
     matches.sort(key=lambda m: m["score"], reverse=True)

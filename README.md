@@ -1,4 +1,4 @@
-# SkillForge v5.1
+# SkillForge v5.2
 
 **From Art to Engineering: A Manifesto for AI Skill Creation.**
 
@@ -21,6 +21,39 @@ The central challenge in AI development isn't a lack of ideas, but the inconsist
 SkillForge is a methodology where rigor is integrated into every step of the creation process, from initial conception to final validation. It's a fundamental shift from reactive testing to proactive engineering.
 
 ![Quality Built In](assets/images/03-quality-built-in.png)
+
+---
+
+## What's New in v5.2
+
+v5.2 adds the Context Skill Advisor: proactive, evidence-backed skill suggestions with user-controlled Proactivity Levels.
+
+### Context Skill Advisor
+
+- Proactive by default with install-time levels: `off`, `quiet`, `balanced`, and `active`
+- `balanced` is the default level
+- Supports global config plus project-level overrides
+- Uses Session Context, Project Context, and Personal Context by default
+- Uses Targeted Content Access: search broadly, then read only narrow relevant excerpts
+- Runs from Advisor Checkpoints and Scheduled Background Advising
+- Writes suggestions to an Advisory Queue and learns from Advisor State feedback
+- Requires confirmation before invoking suggested skills
+
+### Advisor Commands
+
+```bash
+# Configure proactive advising
+python scripts/install_skillforge.py
+
+# Run a checkpoint from the current agent session
+python scripts/context_advisor.py checkpoint --cwd "$PWD" --text "<brief current context>"
+
+# Run scheduled advising and queue suggestions
+python scripts/context_advisor.py run --cwd "$PWD"
+
+# Review queued suggestions
+python scripts/context_advisor.py list
+```
 
 ---
 
@@ -191,6 +224,8 @@ SkillForge is designed so skills can execute repeatable work, validate outputs, 
 skillforge/
 ├── SKILL.md                    # Main skill definition (< 500 lines)
 ├── LICENSE                     # MIT License
+├── CONTEXT.md                  # Repo glossary (not packaged)
+├── docs/adr/                   # Repo architecture decisions (not packaged)
 ├── references/                 # Loaded into context when needed
 │   ├── regression-questions.md
 │   ├── multi-lens-framework.md
@@ -206,12 +241,15 @@ skillforge/
 │       ├── skill-spec-template.xml
 │       ├── skill-md-template.md
 │       └── script-template.py
-└── scripts/                    # Automated quality gates
+└── scripts/                    # Automated quality gates and advisor tools
+    ├── advisor_scoring.py
+    ├── context_advisor.py
+    ├── context_sources.py
     ├── init_skill.py
+    ├── install_skillforge.py
+    ├── skillforge_config.py
     ├── triage_skill_request.py
     ├── discover_skills.py
-    ├── match_skills.py
-    ├── verify_recommendation.py
     ├── validate-skill.py
     ├── quick_validate.py
     └── package_skill.py
@@ -233,14 +271,17 @@ git clone https://github.com/tripleyak/SkillForge.git /tmp/skillforge
 
 # Codex install
 cp -r /tmp/skillforge ~/.codex/skills/skillforge
-rm -rf ~/.codex/skills/skillforge/{README.md,LICENSE,.git,.gitignore,.skillignore}
+rm -rf ~/.codex/skills/skillforge/{README.md,LICENSE,CONTEXT.md,docs,.git,.gitignore,.skillignore} ~/.codex/skills/skillforge/assets/images
 
 # Claude Code install
 cp -r /tmp/skillforge ~/.claude/skills/skillforge
-rm -rf ~/.claude/skills/skillforge/{README.md,LICENSE,.git,.gitignore,.skillignore}
+rm -rf ~/.claude/skills/skillforge/{README.md,LICENSE,CONTEXT.md,docs,.git,.gitignore,.skillignore} ~/.claude/skills/skillforge/assets/images
 
 # Or package as .skill file (respects .skillignore)
 python scripts/package_skill.py /tmp/skillforge ./dist
+
+# Configure proactive advising
+python ~/.codex/skills/skillforge/scripts/install_skillforge.py
 
 # Full autonomous execution
 SkillForge: {goal}
@@ -255,14 +296,14 @@ skillforge --plan-only
 python scripts/init_skill.py my-skill --path ~/.codex/skills
 ```
 
-> **Note:** `README.md`, `LICENSE`, and `assets/images/` are for GitHub browsing only. They are excluded from `.skill` packages via `.skillignore` and should not be copied into your skills directory.
+> **Note:** `README.md`, `LICENSE`, `CONTEXT.md`, `docs/adr/`, and `assets/images/` are for GitHub browsing only. They are excluded from `.skill` packages via `.skillignore` and should not be copied into your skills directory.
 
 ---
 
 ## Requirements
 
 - Codex CLI or Claude Code CLI
-- Python 3.8+ (for validation and scaffold scripts)
+- Python 3.8+ (for validation, scaffold, and advisor scripts)
 
 ---
 
@@ -286,7 +327,18 @@ MIT License — see [LICENSE](LICENSE)
 
 ## Changelog
 
-### v5.1.0 (Current)
+### v5.2.0 (Current)
+- Added proactive Context Skill Advisor
+- Added Proactivity Levels with `balanced` as install default
+- Added global config and project-level Proactivity Overrides
+- Added Advisor Checkpoints and Scheduled Background Advising support
+- Added Advisory Queue and Advisor State feedback handling
+- Added targeted Session, Project, Personal, and GitHub metadata context collection
+- Added `context_advisor.py`, `advisor_scoring.py`, `context_sources.py`, `skillforge_config.py`, and `install_skillforge.py`
+- Fixed skill discovery to scan Codex and Agents skill sources in addition to Claude sources
+- Fixed substring false positives in skill name and trigger matching
+
+### v5.1.0
 - Added Codex compatibility to SKILL.md instructions and host paths
 - Added Codex skill source discovery (`~/.codex/skills`) with uppercase `SKILL.md` support
 - Updated scaffold and validation scripts to use Codex path examples

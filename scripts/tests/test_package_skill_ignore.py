@@ -39,6 +39,8 @@ class PackageSkillIgnoreTest(unittest.TestCase):
 
             (skill_dir / "public.txt").write_text("ok", encoding="utf-8")
             (skill_dir / "secret.env").write_text("PRIVATE=1", encoding="utf-8")
+            (skill_dir / ".hidden").mkdir()
+            (skill_dir / ".hidden" / "project.json").write_text("{}", encoding="utf-8")
             (skill_dir / "notes").mkdir()
             (skill_dir / "notes" / "internal.txt").write_text("internal", encoding="utf-8")
 
@@ -51,6 +53,7 @@ class PackageSkillIgnoreTest(unittest.TestCase):
 
             self.assertIn("my-skill/public.txt", names)
             self.assertNotIn("my-skill/secret.env", names)
+            self.assertNotIn("my-skill/.hidden/project.json", names)
             self.assertNotIn("my-skill/notes/internal.txt", names)
 
 

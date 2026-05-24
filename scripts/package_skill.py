@@ -45,8 +45,12 @@ def load_skillignore(skill_path: Path) -> list[str]:
 
 def is_ignored(file_path: Path, skill_path: Path, patterns: list[str]) -> bool:
     """Check whether a file should be excluded by .skillignore."""
-    rel_path = str(file_path.relative_to(skill_path))
+    relative = file_path.relative_to(skill_path)
+    rel_path = str(relative)
     name = file_path.name
+
+    if any(part.startswith(".") for part in relative.parts):
+        return True
 
     for pattern in patterns:
         if fnmatch.fnmatch(name, pattern):

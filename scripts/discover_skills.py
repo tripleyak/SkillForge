@@ -69,34 +69,52 @@ class Result:
 
 SKILL_SOURCES = [
     {
-        "name": "custom",
-        "path": Path.home() / ".claude" / "skills",
+        "name": "codex-custom",
+        "path": Path.home() / ".codex" / "skills",
         "pattern": "*/[Ss][Kk][Ii][Ll][Ll].[Mm][Dd]",  # Case-insensitive: SKILL.md or skill.md
         "priority": 1
+    },
+    {
+        "name": "agents-custom",
+        "path": Path.home() / ".agents" / "skills",
+        "pattern": "*/[Ss][Kk][Ii][Ll][Ll].[Mm][Dd]",  # Case-insensitive: SKILL.md or skill.md
+        "priority": 2
+    },
+    {
+        "name": "claude-custom",
+        "path": Path.home() / ".claude" / "skills",
+        "pattern": "*/[Ss][Kk][Ii][Ll][Ll].[Mm][Dd]",  # Case-insensitive: SKILL.md or skill.md
+        "priority": 3
+    },
+    {
+        "name": "codex-plugin-cache",
+        "path": Path.home() / ".codex" / "plugins" / "cache",
+        "pattern": "**/[Ss][Kk][Ii][Ll][Ll].[Mm][Dd]",
+        "priority": 4
     },
     {
         "name": "superpowers",
         "path": Path.home() / ".claude" / "plugins" / "cache" / "superpowers" / "skills",
         "pattern": "*/*.md",
-        "priority": 2
+        "priority": 5
     },
     {
         "name": "anthropic-agent-skills",
         "path": Path.home() / ".claude" / "plugins" / "marketplaces" / "anthropic-agent-skills",
         "pattern": "skills/*/skill.md",
-        "priority": 3
+        "priority": 6
     },
     {
         "name": "claude-code-workflows",
         "path": Path.home() / ".claude" / "plugins" / "marketplaces" / "claude-code-workflows",
         "pattern": "plugins/*/skills/*/skill.md",
-        "priority": 4
+        "priority": 7
     },
     {
         "name": "claude-code-plugins",
         "path": Path.home() / ".claude" / "plugins" / "marketplaces" / "claude-code-plugins",
         "pattern": "*/skills/*/skill.md",
-        "priority": 5
+        "priority": 8
     }
 ]
 
