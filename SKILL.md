@@ -157,6 +157,7 @@ Only add higher-risk tools when explicitly required:
 | `SkillForge --triage {input}` | Run Phase 0 triage only |
 | `SkillForge --improve {skill}` | Enter improvement mode for existing skill |
 | `python scripts/install_skillforge.py` | Configure proactive advising |
+| `bash scripts/install_workshop.sh` | Install SkillForge for Claude Code, Codex, and workshop use |
 | `python scripts/context_advisor.py checkpoint --text "<context>"` | Run an Advisor Checkpoint |
 | `python scripts/context_advisor.py run` | Run Scheduled Background Advising and queue suggestions |
 | `python scripts/context_advisor.py list` | List pending suggestions |
@@ -206,6 +207,9 @@ SkillForge does not auto-invoke suggested skills. Suggestions become Confirmed S
 ```bash
 # Configure global defaults and print the checkpoint integration snippet
 python scripts/install_skillforge.py
+
+# One-command workshop install for Claude Code and Codex
+curl -fsSL https://raw.githubusercontent.com/tripleyak/SkillForge/main/scripts/install_workshop.sh | bash
 
 # Configure a different Proactivity Level
 python scripts/install_skillforge.py --proactivity-level quiet
@@ -350,6 +354,7 @@ python scripts/discover_skills.py
 | `scripts/context_sources.py` | Collect targeted Session, Project, Personal, and GitHub metadata evidence |
 | `scripts/skillforge_config.py` | Load global config, project overrides, defaults, and Proactivity Level settings |
 | `scripts/install_skillforge.py` | Configure proactive advising, scheduler files, and agent integration snippets |
+| `scripts/install_workshop.sh` | One-command workshop installer for Claude Code, Codex, shared skills, and `/skillforge` |
 | `scripts/init_skill.py` | Scaffold new skills |
 | `scripts/quick_validate.py` | Run fast package validation |
 | `scripts/validate-skill.py` | Run full structural validation |

@@ -226,6 +226,8 @@ skillforge/
 ├── LICENSE                     # MIT License
 ├── CONTEXT.md                  # Repo glossary (not packaged)
 ├── docs/adr/                   # Repo architecture decisions (not packaged)
+├── commands/                   # Claude Code slash commands
+│   └── skillforge.md
 ├── references/                 # Loaded into context when needed
 │   ├── regression-questions.md
 │   ├── multi-lens-framework.md
@@ -247,6 +249,7 @@ skillforge/
     ├── context_sources.py
     ├── init_skill.py
     ├── install_skillforge.py
+    ├── install_workshop.sh
     ├── skillforge_config.py
     ├── triage_skill_request.py
     ├── discover_skills.py
@@ -264,6 +267,20 @@ skillforge/
 ## Installation & Usage
 
 ![Installation](assets/images/12-installation.png)
+
+### Workshop Quick Install
+
+For the AI for Ecommerce workshop, run this one-command installer from a regular terminal:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/tripleyak/SkillForge/main/scripts/install_workshop.sh | bash
+```
+
+This installs SkillForge for Claude Code, Codex, and the shared local skill surface; installs the Claude Code `/skillforge` command; configures proactive advising at the default `balanced` level; and verifies the install.
+
+Restart Claude Code and Codex after installation so the new skill and command load.
+
+### Manual Install
 
 ```bash
 # Install (excludes repo-only files like README.md automatically)
