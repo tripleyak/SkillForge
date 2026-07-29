@@ -100,6 +100,10 @@ Proactive suggestions are delivered through Claude Code hooks (SessionStart surf
 | `context_advisor.py` / `install_skillforge.py` | Advisor queue and setup |
 | `check_docs_safety.py` | Unsafe interpolation check |
 
+Script exit codes: 0 success, 1 failure, 2 usage/consent error, 10 validation failure, 11 verification/dependency failure.
+
+Extension points: new lint checks in `validate_skill.py`; new doctor checks in `skillforge_doctor.py`; new compile targets in `compile_skill.py`; new lenses in `references/multi-lens-framework.md`.
+
 ## Anti-patterns
 
 | Avoid | Instead |

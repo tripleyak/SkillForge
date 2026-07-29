@@ -546,8 +546,10 @@ class SkillValidator:
         )
 
         # Check for extension points
+        # Advisory: any mention counts - a dedicated heading is not required
+        # (v6 doctrine: no ritual sections; evolution guidance is advisory)
         has_extensions = bool(re.search(
-            r'##\s*(Extension|Future|Evolution)',
+            r'(##\s*(Extension|Future|Evolution)|extension\s+points?)',
             self.content,
             re.IGNORECASE
         ))
