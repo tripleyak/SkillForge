@@ -74,6 +74,10 @@ Requirements: Claude Code (or Codex CLI), Python 3.8+ (stdlib only; PyYAML used 
 
 CI: copy `assets/templates/github-workflow-skill-ci.yml` into `.github/workflows/` of any skill repo.
 
+## Releases
+
+Version history and detailed release notes live on the [releases page](https://github.com/tripleyak/SkillForge/releases). v6.0.0 is a ground-up rework; the audit that drove it ships in-repo as [SKILLFORGE_AUDIT.md](SKILLFORGE_AUDIT.md).
+
 ## License
 
 MIT - see [LICENSE](LICENSE)
