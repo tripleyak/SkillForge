@@ -383,7 +383,11 @@ Examples:
         sys.exit(2)
 
     # Create scaffold
-    skill_dir = create_skill(args.name, parent)
+    try:
+        skill_dir = create_skill(args.name, parent)
+    except OSError as exc:
+        print(f"Error: Failed to create skill scaffold: {exc}", file=sys.stderr)
+        sys.exit(1)
     print_next_steps(skill_dir, args.name)
 
     sys.exit(0)

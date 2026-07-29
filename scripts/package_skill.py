@@ -13,6 +13,7 @@ Example:
     python package_skill.py ~/.claude/skills/my-skill ./dist
 """
 
+import argparse
 import sys
 import zipfile
 import fnmatch
@@ -44,21 +45,51 @@ def load_skillignore(skill_path: Path) -> list[str]:
 
 
 def is_ignored(file_path: Path, skill_path: Path, patterns: list[str]) -> bool:
-    """Check whether a file should be excluded by .skillignore."""
+    """Check whether a file should be excluded by .skillignore.
+
+    Pattern semantics follow rsync's exclude rules (install_workshop.sh uses
+    rsync with the same file, so the two must agree):
+    - "name" matches files or directories named "name" at any depth
+    - "dir/" (trailing slash) matches DIRECTORIES only, at any depth
+    - "a/b" and "a/b/" match relative paths from the skill root
+    - "*.ext" style globs match basenames
+    """
     relative = file_path.relative_to(skill_path)
     rel_path = str(relative)
     name = file_path.name
+    parent_parts = relative.parts[:-1]
 
     if any(part.startswith(".") for part in relative.parts):
         return True
 
     for pattern in patterns:
+        if pattern.endswith("/"):
+            # Trailing-slash pattern: directories only (rsync semantics).
+            dir_pattern = pattern.rstrip("/")
+            if not dir_pattern:
+                continue
+            if "/" in dir_pattern:
+                # Anchored directory path relative to the skill root
+                for depth in range(1, len(parent_parts) + 1):
+                    if fnmatch.fnmatch("/".join(parent_parts[:depth]), dir_pattern):
+                        return True
+            else:
+                # Directory name at any depth
+                if any(fnmatch.fnmatch(part, dir_pattern) for part in parent_parts):
+                    return True
+            continue
+
         if fnmatch.fnmatch(name, pattern):
             return True
         if fnmatch.fnmatch(rel_path, pattern):
             return True
-        # Handle directory-style patterns like "assets/images"
+        # Handle directory-style patterns like "assets/images": the pattern
+        # also excludes everything inside a matching directory.
         if rel_path.startswith(pattern + "/") or rel_path == pattern:
+            return True
+        if "/" not in pattern and any(
+            fnmatch.fnmatch(part, pattern) for part in parent_parts
+        ):
             return True
     return False
 
@@ -139,22 +170,33 @@ def package_skill(skill_path, output_dir=None) -> PackageResult:
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python package_skill.py <path/to/skill-folder> [output-directory]")
-        print("\nExample:")
-        print("  python package_skill.py ~/.claude/skills/my-skill")
-        print("  python package_skill.py ~/.claude/skills/my-skill ./dist")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description="Package a skill folder into a distributable .skill file",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s ~/.claude/skills/my-skill
+  %(prog)s ~/.claude/skills/my-skill ./dist
+        """
+    )
+    parser.add_argument(
+        "skill_path",
+        help="Path to the skill folder to package"
+    )
+    parser.add_argument(
+        "output_dir",
+        nargs="?",
+        default=None,
+        help="Output directory for the .skill file (default: current directory)"
+    )
+    args = parser.parse_args()
 
-    skill_path = sys.argv[1]
-    output_dir = sys.argv[2] if len(sys.argv) > 2 else None
-
-    print(f"📦 Packaging skill: {skill_path}")
-    if output_dir:
-        print(f"   Output directory: {output_dir}")
+    print(f"📦 Packaging skill: {args.skill_path}")
+    if args.output_dir:
+        print(f"   Output directory: {args.output_dir}")
     print()
 
-    result = package_skill(skill_path, output_dir)
+    result = package_skill(args.skill_path, args.output_dir)
 
     if result.success:
         print(f"\n✅ {result.message}")
