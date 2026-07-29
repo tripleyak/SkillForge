@@ -37,7 +37,7 @@ A workspace-specific Proactivity Level that replaces the Global Proactivity Leve
 _Avoid_: Local notification setting, repo preference
 
 **Context Source Tier**:
-A category of work context the Context Skill Advisor may use when forming Proactive Skill Suggestions. SkillForge uses three source tiers: Session Context, Project Context, and Personal Context; all three are enabled by default.
+A category of work context the Context Skill Advisor may use when forming Proactive Skill Suggestions. SkillForge uses three source tiers: Session Context and Project Context are enabled by default; Personal Context is disabled until the user opts in with recorded consent.
 _Avoid_: Data source, connector class, search scope
 
 **Session Context**:
@@ -49,20 +49,28 @@ The repository or workspace context tied to the current task.
 _Avoid_: Codebase scan, repo crawl
 
 **Personal Context**:
-The user's broader local and connected knowledge context, such as knowledge bases, vaults, GitHub repos, saved memories, and work documents.
+The user's broader local and connected knowledge context, such as knowledge bases, vaults, GitHub repos, saved memories, and work documents. Strictly opt-in: it is never scanned unless the user has chosen the paths and owners and the config records that consent with a timestamp.
 _Avoid_: Private data, background knowledge
+
+**Personal Context Consent**:
+The recorded opt-in (`"consented": true` plus a timestamp, written by the installer) that Personal Context scanning requires. Without it, personal paths and GitHub metadata are refused at the source-collection layer, not merely skipped by preference.
+_Avoid_: Privacy setting, toggle, opt-out flag
 
 **Targeted Content Access**:
 A context access rule where SkillForge searches broadly for candidate sources, then reads only specific relevant files, excerpts, or metadata needed to justify a suggestion.
 _Avoid_: Full indexing, unrestricted crawl, metadata-only mode
 
 **Advisor Checkpoint**:
-A meaningful work moment when the Context Skill Advisor evaluates whether to surface a Proactive Skill Suggestion.
+A meaningful work moment when the Context Skill Advisor evaluates whether to surface a Proactive Skill Suggestion. Delivered mechanically by Hook Delivery, not by asking agents to remember.
 _Avoid_: Per-turn scan, manual review
 
-**Scheduled Background Advising**:
-A recurring Context Skill Advisor evaluation that runs without a user explicitly asking for skill advice. In v1, it is a local scheduled advisor run rather than an always-on daemon.
-_Avoid_: Manual triage, passive routing, always-on watcher
+**Hook Delivery**:
+The advisor's delivery mechanism: two opt-in Claude Code hooks. The SessionStart hook surfaces the Advisory Queue as a Session Start Digest; the UserPromptSubmit hook runs a fast checkpoint against the prebuilt skill index and may emit one Checkpoint Inline Suggestion. There is no scheduled background advising by default; `context_advisor.py run` exists only for users who wire their own scheduler and requires an explicit `--cwd`.
+_Avoid_: Scheduled Background Advising, daemon, watcher, launchd agent
+
+**Suggestion Caps**:
+The per-session and per-day suggestion limits defined by the Proactivity Level and enforced by the UserPromptSubmit hook through a local state file. When a cap is reached, checkpoints stay silent.
+_Avoid_: Rate limit, throttle, quota
 
 **Advisor Run**:
 One execution of the Context Skill Advisor against available context.
@@ -77,20 +85,16 @@ The local record of user feedback that changes future Context Skill Advisor beha
 _Avoid_: Skill index, project config, memory
 
 **Session Start Digest**:
-A short presentation of pending Proactive Skill Suggestions at the beginning of an agent session.
+A short presentation of pending Proactive Skill Suggestions at the beginning of an agent session, injected by the SessionStart hook and silent when the Advisory Queue has nothing to show.
 _Avoid_: Startup notification, daily digest
 
 **Checkpoint Inline Suggestion**:
-A single Proactive Skill Suggestion surfaced during an Advisor Checkpoint when it is relevant to the current work.
+A single Proactive Skill Suggestion surfaced during an Advisor Checkpoint when it is relevant to the current work, emitted by the UserPromptSubmit hook within its time budget and Suggestion Caps.
 _Avoid_: Pop-up, interruption
 
-**Agent Integration Snippet**:
-A short instruction block that tells an active agent when to ask the Context Skill Advisor for checkpoint suggestions.
-_Avoid_: Global rule, install mutation, hidden hook
-
 **Confirmed Skill Use**:
-SkillForge invoking or applying a suggested skill only after user confirmation or an explicit host request.
-_Avoid_: Auto-invoke, silent activation
+SkillForge invoking or applying a suggested skill only after the user confirms. There is no other path: hooks and queue output always instruct the agent to ask first.
+_Avoid_: Auto-invoke, silent activation, host-directed invocation
 
 **New Skill Opportunity**:
 An Evidence-Backed Suggestion that proposes creating a new skill because available skills do not adequately cover a repeated or well-evidenced work pattern.
@@ -128,19 +132,23 @@ Domain Expert: "Yes. That project uses a Project Proactivity Override."
 
 Developer: "Which context sources are available by default?"
 
-Domain Expert: "Session Context, Project Context, and Personal Context are all enabled by default."
+Domain Expert: "Session Context and Project Context. Personal Context requires Personal Context Consent."
 
 Developer: "Does enabling Personal Context mean SkillForge reads every file immediately?"
 
-Domain Expert: "No. It uses Targeted Content Access."
+Domain Expert: "No. It uses Targeted Content Access, and only after consent is recorded."
 
 Developer: "When should SkillForge evaluate whether to suggest a skill?"
 
-Domain Expert: "It uses Advisor Checkpoints and Scheduled Background Advising."
+Domain Expert: "At Advisor Checkpoints, delivered mechanically through Hook Delivery."
 
-Developer: "Where do scheduled suggestions go?"
+Developer: "Where do queued suggestions go?"
 
-Domain Expert: "An Advisor Run writes Proactive Skill Suggestions to the Advisory Queue."
+Domain Expert: "An Advisor Run writes Proactive Skill Suggestions to the Advisory Queue, and the Session Start Digest surfaces them."
+
+Developer: "What keeps the advisor from suggesting on every prompt?"
+
+Domain Expert: "Suggestion Caps, enforced per session and per day by the Proactivity Level."
 
 Developer: "Where does SkillForge remember dismissed suggestions?"
 
@@ -148,12 +156,8 @@ Domain Expert: "It records that feedback in Advisor State."
 
 Developer: "Can SkillForge automatically run the skill it suggests?"
 
-Domain Expert: "No. Suggestions become Confirmed Skill Use only after confirmation or explicit host direction."
+Domain Expert: "No. Suggestions become Confirmed Skill Use only after the user confirms."
 
 Developer: "Can SkillForge proactively suggest creating a new skill?"
 
 Domain Expert: "Yes, when it identifies a New Skill Opportunity."
-
-Developer: "How does an active agent know when to run Advisor Checkpoints?"
-
-Domain Expert: "It uses an Agent Integration Snippet."
