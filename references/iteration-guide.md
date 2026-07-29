@@ -17,6 +17,8 @@ Skill creation does not end at generation. The best skills are shaped by real us
 
 Each iteration should target one specific behavior. Resist the urge to rewrite large sections at once.
 
+After EVERY change, re-run the skill's regression suite: `python3 scripts/run_skill_evals.py <skill-dir>` (see [testing-and-evals.md](testing-and-evals.md)). New failure signals observed in real usage become new eval scenarios before you fix them - the same failing-test-first discipline as code.
+
 ---
 
 ## What to Look For

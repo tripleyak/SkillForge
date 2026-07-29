@@ -6,7 +6,7 @@ The core methodology for exhaustive skill analysis. These questions are applied 
 
 Regression questioning prevents premature convergence on suboptimal designs by systematically exploring the problem space. The goal is not just to answer questions, but to discover questions that haven't been asked yet.
 
-**Termination Criteria:**
+**Termination Criteria** (honesty note: "no new insights" is self-report and cannot be verified externally - so a hard cap applies: maximum 4 productive rounds, stop earlier when a round changes no design decision):
 - Three consecutive rounds produce no new insights
 - All thinking models have been applied
 - At least 3 simulated expert perspectives considered
@@ -113,7 +113,7 @@ Questions about the questioning process itself.
 
 | Question | Purpose |
 |----------|---------|
-| "Have I truly exhausted analysis or am I just tired?" | Combat cognitive fatigue |
+| "Did the last round change any design decision?" | If no: stop - further rounds are ritual |
 | "What question haven't I asked?" | Discover unknown unknowns |
 | "If I had to defend this to a critic, where would I struggle?" | Identify weak points |
 | "What would I add with unlimited time?" | Identify deferred improvements |

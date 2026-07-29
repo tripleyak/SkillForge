@@ -17,6 +17,7 @@ Exit codes:
 
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -58,8 +59,19 @@ def scan_file(path: Path) -> list[str]:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Guard against unsafe hook command examples in docs"
+    )
+    parser.add_argument(
+        "targets",
+        nargs="*",
+        type=Path,
+        help="Markdown files to scan (default: SKILL.md and key references)"
+    )
+    args = parser.parse_args()
+
     repo_root = Path(__file__).resolve().parents[1]
-    targets = [Path(arg).resolve() for arg in sys.argv[1:]] if len(sys.argv) > 1 else default_targets(repo_root)
+    targets = [t.resolve() for t in args.targets] if args.targets else default_targets(repo_root)
 
     all_issues: list[str] = []
     try:
@@ -80,4 +92,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())

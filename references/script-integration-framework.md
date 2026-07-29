@@ -273,7 +273,7 @@ def parse_yaml(text: str) -> dict:
 
 ## Script Discovery Process (Phase 1)
 
-During Deep Analysis, apply the **Automation Lens** (Lens 12) to identify script opportunities.
+During Deep Analysis, apply the **Automation Lens** to identify script opportunities.
 
 ### Automation Lens Questions
 
@@ -452,7 +452,7 @@ Skills can leverage hooks for automatic script invocation during tool use.
 name: validated-generator
 hooks:
   PreToolUse:
-    - matcher: "Bash(python:scripts/generate*)"
+    - matcher: "Bash"
       hooks:
         - type: command
           command: "python scripts/validate_params.py"
@@ -464,11 +464,11 @@ hooks:
 ---
 ```
 
-Read `$TOOL_INPUT` and `$TOOL_OUTPUT` from environment variables inside the script.
+Hook commands receive a JSON payload on stdin (fields include tool_name and tool_input); parse it with json.load(sys.stdin). There are no $TOOL_INPUT/$TOOL_OUTPUT environment variables.
 Avoid interpolating these values directly in shell command strings.
 
 **Script requirements for hook integration:**
-1. Accept input via `$TOOL_INPUT` or `$TOOL_OUTPUT` environment variables
+1. Accept input by parsing the JSON payload on stdin
 2. Exit code 0 allows tool execution to proceed
 3. Exit code non-0 blocks tool execution (PreToolUse) or flags error (PostToolUse)
 4. Output to stderr for error messages (stdout may be captured)
@@ -480,7 +480,7 @@ Avoid interpolating these values directly in shell command strings.
 """
 hook_validator.py - Validate tool input before execution
 
-Called by PreToolUse hook with $TOOL_INPUT containing the tool parameters.
+Called by a PreToolUse hook; parses the JSON payload on stdin for tool parameters.
 Exit 0 to allow, exit 1 to block.
 """
 
@@ -498,10 +498,11 @@ def validate_input(tool_input: str) -> tuple[bool, str]:
         return False, "Invalid JSON input"
 
 def main():
-    tool_input = os.environ.get("TOOL_INPUT", "")
+    payload = json.load(sys.stdin)
+    tool_input = json.dumps(payload.get("tool_input", {}))
 
     if not tool_input:
-        print("Warning: No TOOL_INPUT provided", file=sys.stderr)
+        print("Warning: empty tool_input payload", file=sys.stderr)
         sys.exit(0)  # Allow by default if no input
 
     is_valid, reason = validate_input(tool_input)

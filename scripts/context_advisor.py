@@ -24,16 +24,18 @@ from pathlib import Path
 from typing import Any
 
 try:
+    from _constants import INDEX_MAX_AGE_HOURS
     from advisor_scoring import Suggestion, build_suggestions
     from context_sources import collect_context_evidence
-    from discover_skills import discover_skills, get_index_path, save_index
+    from discover_skills import discover_skills, get_index_path, index_age_hours, save_index
     from skillforge_config import data_dir, level_settings, load_config, project_key
     from triage_skill_request import load_skill_index
 except ImportError:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from _constants import INDEX_MAX_AGE_HOURS
     from advisor_scoring import Suggestion, build_suggestions
     from context_sources import collect_context_evidence
-    from discover_skills import discover_skills, get_index_path, save_index
+    from discover_skills import discover_skills, get_index_path, index_age_hours, save_index
     from skillforge_config import data_dir, level_settings, load_config, project_key
     from triage_skill_request import load_skill_index
 
@@ -162,9 +164,10 @@ def update_queue_item(suggestion_id: str, status: str) -> dict[str, Any] | None:
     return found
 
 
-def is_suppressed(suggestion: Suggestion, state: dict[str, Any]) -> bool:
+def is_item_suppressed(item: dict[str, Any], state: dict[str, Any]) -> bool:
+    """Check dismissal/snooze windows and project suppression for a queue item."""
     now = utc_now()
-    fingerprint = suggestion.fingerprint
+    fingerprint = item.get("fingerprint")
 
     for bucket_name in ("dismissed", "snoozed"):
         bucket = state.get(bucket_name, {})
@@ -173,15 +176,22 @@ def is_suppressed(suggestion: Suggestion, state: dict[str, Any]) -> bool:
             return True
 
     never_projects = state.get("never_projects", {})
-    project_rules = never_projects.get(suggestion.project_key, []) if isinstance(never_projects, dict) else []
-    target = suggestion.skill_name or suggestion.action
+    project_rules = never_projects.get(item.get("project_key"), []) if isinstance(never_projects, dict) else []
+    target = item.get("skill_name") or item.get("action")
     return target in project_rules
 
 
+def is_suppressed(suggestion: Suggestion, state: dict[str, Any]) -> bool:
+    return is_item_suppressed(suggestion.to_dict(), state)
+
+
 def ensure_skill_index() -> dict[str, Any]:
-    index = load_skill_index()
-    if index:
-        return index
+    """Load the skill index, rebuilding when it is missing OR stale (>24h)."""
+    age = index_age_hours(get_index_path())
+    if age is not None and age <= INDEX_MAX_AGE_HOURS:
+        index = load_skill_index()
+        if index:
+            return index
     result = discover_skills(verbose=False)
     save_index(result, get_index_path())
     index = load_skill_index()
@@ -307,7 +317,10 @@ def main() -> int:
     checkpoint = sub.add_parser("checkpoint", help="Return inline checkpoint suggestions")
     add_context_args(checkpoint)
 
-    run = sub.add_parser("run", help="Run scheduled advisor and write to the Advisory Queue")
+    run = sub.add_parser(
+        "run",
+        help="Run the advisor once and write to the Advisory Queue (requires --cwd)",
+    )
     add_context_args(run)
 
     list_cmd = sub.add_parser("list", help="List queued suggestions")
@@ -336,6 +349,8 @@ def main() -> int:
     if args.command == "checkpoint":
         result = run_advisor(args, queue=False)
     elif args.command == "run":
+        if not getattr(args, "cwd", None):
+            parser.error("run requires an explicit --cwd (a run without one would analyze an arbitrary directory)")
         result = run_advisor(args, queue=True)
     elif args.command == "list":
         result = list_suggestions(args)

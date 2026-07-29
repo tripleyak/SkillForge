@@ -3,7 +3,10 @@
 init_skill.py - Scaffold a new agent skill (Claude Code/Codex)
 
 Creates a complete skill directory with SKILL.md template, references/,
-scripts/, and assets/ subdirectories pre-populated with starter files.
+scripts/, assets/, and evals/ subdirectories pre-populated with starter
+files. The scaffold passes validate_skill.py with zero errors and
+run_skill_evals.py --static out of the box (TODO placeholders count as
+structurally valid).
 
 Usage:
     python init_skill.py <skill-name> [--path <parent-directory>]
@@ -20,6 +23,7 @@ Exit Codes:
 """
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -28,67 +32,83 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 # Templates
 # ---------------------------------------------------------------------------
+# SKILL_MD_TEMPLATE follows assets/templates/skill-md-template.md doctrine:
+# - description = trigger conditions ONLY ("Use when ..."), third person,
+#   no workflow summary, no angle brackets
+# - no model: pin, no body "Triggers" section, no <details> blocks
+# - depth belongs in references/, not the body
 
 SKILL_MD_TEMPLATE = """\
 ---
 name: {name}
-description: >
-  TODO: Describe what this skill does in 1-2 sentences.
+description: "Use when TODO: concrete situations, user phrasings, symptoms, and error messages that should trigger this skill - third person, no workflow summary"
+license: MIT
+metadata:
+  version: 0.1.0
 ---
 
 # {title}
 
-TODO: One-line summary of this skill's purpose.
+TODO: One-paragraph overview - what this enables and the core principle
+(2-3 sentences).
 
-## Triggers
+## When to use
 
-- `{name}: {{goal}}` - TODO: Primary trigger description
-- `TODO: trigger phrase 2` - TODO: Description
-- `TODO: trigger phrase 3` - TODO: Description
+- TODO: Symptom or situation
+- TODO: Symptom or situation
 
-## Quick Reference
-
-| Input | Output | Duration |
-|-------|--------|----------|
-| TODO  | TODO   | TODO     |
+When NOT to use: TODO adjacent cases that belong to other skills or need no
+skill.
 
 ## Process
 
-### Phase 1: TODO Phase Name
-
-TODO: Describe what happens in this phase.
-
 1. **TODO Step 1** - Description
 2. **TODO Step 2** - Description
 
-**Verification:** TODO: How to verify this phase succeeded.
+Scripts (optional): `python3 scripts/example.py <input>` - exit code 0 on
+success, 1 on failure. Delete scripts/ if this skill needs no automation.
 
-### Phase 2: TODO Phase Name
+## Anti-patterns
 
-TODO: Describe what happens in this phase.
-
-1. **TODO Step 1** - Description
-2. **TODO Step 2** - Description
-
-**Verification:** TODO: How to verify this phase succeeded.
-
-## Anti-Patterns
-
-| Avoid | Why | Instead |
-|-------|-----|---------|
-| TODO  | TODO | TODO   |
+| Avoid | Instead |
+|-------|---------|
+| TODO: what goes wrong | TODO: what to do instead |
 
 ## Verification
 
-After execution:
+- [ ] TODO: Observable check 1
+- [ ] TODO: Observable check 2
 
-- [ ] TODO: Check 1
-- [ ] TODO: Check 2
-- [ ] TODO: Check 3
+## Extension points
 
-## References
+- TODO: What future growth this skill anticipates (or delete this section).
+"""
 
-- [TODO](references/TODO) - TODO: Description
+TRIGGERS_JSON_TEMPLATE = {
+    "positive": [
+        "TODO: a real user phrasing that SHOULD trigger this skill",
+        "TODO: another phrasing that should trigger (use symptom keywords)",
+        "TODO: a third positive phrasing",
+    ],
+    "near_miss": [
+        "TODO: an adjacent request that should NOT trigger this skill",
+        "TODO: another near-miss that belongs to a different skill",
+    ],
+    "holdout": [
+        "TODO: a positive phrasing you will NEVER edit the description against",
+    ],
+}
+
+SCENARIO_TEMPLATE = """\
+---
+task: "TODO: The exact prompt to give the test subagent"
+baseline_failure: "TODO: What agents do WITHOUT the skill (from RED runs, verbatim summary)"
+assertions:
+  - "TODO: Observable property the with-skill output must have"
+  - "TODO: Baseline failure that must NOT appear"
+runs: 1
+---
+Optional setup notes (files to create, state to arrange) for the runner.
 """
 
 README_REFERENCES = """\
@@ -271,6 +291,7 @@ def create_skill(name: str, parent_dir: Path) -> Path:
         skill_dir / "references",
         skill_dir / "scripts",
         skill_dir / "assets",
+        skill_dir / "evals" / "scenarios",
     ]
     for d in dirs:
         d.mkdir(parents=True, exist_ok=True)
@@ -299,6 +320,16 @@ def create_skill(name: str, parent_dir: Path) -> Path:
         EXAMPLE_SCRIPT.format(name=name)
     )
 
+    # Write evals/ suite (references/testing-and-evals.md section 6).
+    # TODO placeholders are structurally valid: the scaffold passes
+    # run_skill_evals.py --static before any real eval is written.
+    (skill_dir / "evals" / "triggers.json").write_text(
+        json.dumps(TRIGGERS_JSON_TEMPLATE, indent=2) + "\n"
+    )
+    (skill_dir / "evals" / "scenarios" / "01-example.md").write_text(
+        SCENARIO_TEMPLATE
+    )
+
     return skill_dir
 
 
@@ -318,25 +349,31 @@ Directory structure:
       example.py          <- Example automation script
     assets/
       README.md
+    evals/
+      triggers.json       <- positive / near_miss / holdout trigger queries
+      scenarios/
+        01-example.md     <- behavioral scenario (task + assertions)
 
 Next steps:
   1. Edit SKILL.md - replace all TODO placeholders
-     - Fill in the description in frontmatter
-     - Define trigger phrases (3-5 recommended)
-     - Write process phases with concrete steps
-     - Add anti-patterns and verification checks
-  2. Add domain knowledge to references/
-  3. Add automation scripts to scripts/ (optional)
-  4. Validate: python validate-skill.py {skill_dir}
-  5. Install:
+     - Description = trigger conditions ONLY ("Use when ..."), third person,
+       symptom keywords, no workflow summary
+     - Write process steps, anti-patterns, and verification checks
+  2. Fill in evals/ - real trigger queries and at least one scenario
+     grounded in an observed baseline failure (RED gate)
+  3. Add domain knowledge to references/
+  4. Add automation scripts to scripts/ (optional)
+  5. Validate: python3 validate_skill.py {skill_dir}
+              python3 run_skill_evals.py {skill_dir} --static
+  6. Install:
      - Codex: copy to $CODEX_HOME/skills/{name}/ (or ~/.codex/skills/{name}/)
      - Claude Code: copy to ~/.claude/skills/{name}/
 
 Tips:
-  - Keep SKILL.md under 500 lines (hard limit: 1000)
+  - Keep SKILL.md under 1,500 words - depth goes in references/
   - Use tables over prose for structured info
-  - Frontmatter only needs 'name' and 'description'
-  - Reference files keep SKILL.md lean
+  - No model: pin, no body Triggers section, no details blocks
+  - Only the frontmatter description drives invocation
 {PATTERNS_GUIDE}""")
 
 
@@ -383,7 +420,11 @@ Examples:
         sys.exit(2)
 
     # Create scaffold
-    skill_dir = create_skill(args.name, parent)
+    try:
+        skill_dir = create_skill(args.name, parent)
+    except OSError as exc:
+        print(f"Error: Failed to create skill scaffold: {exc}", file=sys.stderr)
+        sys.exit(1)
     print_next_steps(skill_dir, args.name)
 
     sys.exit(0)

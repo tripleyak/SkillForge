@@ -18,12 +18,12 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from skillforge_config import expand_paths
+    from skillforge_config import expand_paths, personal_context_allowed
 except ImportError:
     import sys
 
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from skillforge_config import expand_paths
+    from skillforge_config import expand_paths, personal_context_allowed
 
 
 STOP_WORDS = {
@@ -33,6 +33,14 @@ STOP_WORDS = {
     "user", "using", "what", "when", "where", "with", "would", "run", "focus",
     "session", "existing", "summaries", "summary", "wants", "your", "implement", "updates", "scripts",
 }
+
+# Lines that look like credential assignments never enter evidence excerpts.
+SECRET_LINE_PATTERN = re.compile(
+    r"(?i)\b(password|passwd|pwd|api[_-]?key|access[_-]?key|secret[_-]?key|"
+    r"client[_-]?secret|secret|token|auth[_-]?token|bearer|credential[s]?|"
+    r"private[_-]?key)\b\s*[:=]"
+)
+SECRET_REDACTION = "[redacted: possible credential]"
 
 PROJECT_CANDIDATES = [
     "AGENTS.md",
@@ -100,12 +108,20 @@ def is_excluded(path: Path, patterns: list[str]) -> bool:
     return False
 
 
+def redact_secrets(text: str) -> str:
+    """Replace credential-looking lines before text can enter evidence."""
+    return "\n".join(
+        SECRET_REDACTION if SECRET_LINE_PATTERN.search(line) else line
+        for line in text.splitlines()
+    )
+
+
 def read_excerpt(path: Path, terms: list[str], max_chars: int = 700) -> str:
     """Read a narrow excerpt from a candidate text file."""
     try:
         if path.stat().st_size > 1_000_000:
             return ""
-        text = path.read_text(encoding="utf-8", errors="ignore")
+        text = redact_secrets(path.read_text(encoding="utf-8", errors="ignore"))
     except OSError:
         return ""
 
@@ -125,7 +141,7 @@ def collect_session_evidence(context_text: str, terms: list[str]) -> list[Eviden
     """Create evidence from the current session text passed to the advisor."""
     if not context_text.strip():
         return []
-    excerpt = context_text.strip()[:900]
+    excerpt = redact_secrets(context_text.strip())[:900]
     return [
         Evidence(
             tier="session",
@@ -219,10 +235,14 @@ def rg_search(paths: list[Path], terms: list[str], excludes: list[str], limit: i
 
 
 def collect_personal_evidence(config: dict[str, Any], terms: list[str], excludes: list[str], limit: int = 8) -> list[Evidence]:
-    """Collect targeted evidence from configured personal paths."""
-    personal = config.get("context_sources", {}).get("personal", {})
-    if not personal.get("enabled", True):
+    """Collect targeted evidence from configured personal paths.
+
+    Refuses to scan unless the config records explicit consent
+    (enabled AND consented) - see skillforge_config.personal_context_allowed.
+    """
+    if not personal_context_allowed(config):
         return []
+    personal = config.get("context_sources", {}).get("personal", {})
 
     paths = expand_paths(personal.get("paths", []))
     matches = rg_search(paths, terms, excludes, limit)
@@ -241,10 +261,15 @@ def collect_personal_evidence(config: dict[str, Any], terms: list[str], excludes
 
 
 def collect_github_metadata(config: dict[str, Any], terms: list[str], limit: int = 5) -> list[Evidence]:
-    """Collect matching GitHub repo metadata without reading repository contents."""
+    """Collect matching GitHub repo metadata without reading repository contents.
+
+    Requires explicit Personal Context consent AND the github source enabled.
+    """
+    if not personal_context_allowed(config):
+        return []
     personal = config.get("context_sources", {}).get("personal", {})
     github = personal.get("github", {})
-    if not personal.get("enabled", True) or not github.get("enabled", True) or not shutil.which("gh"):
+    if not github.get("enabled", False) or not shutil.which("gh"):
         return []
 
     owners = github.get("owner_limit", [])
@@ -282,7 +307,7 @@ def collect_github_metadata(config: dict[str, Any], terms: list[str], limit: int
                     tier="personal",
                     source="github-metadata",
                     path=repo.get("url", ""),
-                    excerpt=haystack[:700],
+                    excerpt=redact_secrets(haystack)[:700],
                     matched_terms=matched,
                     personal_context_used=True,
                 )
@@ -308,7 +333,7 @@ def collect_context_evidence(
         evidence.extend(collect_session_evidence(context_text, terms))
     if sources.get("project", {}).get("enabled", True):
         evidence.extend(collect_project_evidence(cwd, terms, excludes))
-    if sources.get("personal", {}).get("enabled", True):
+    if personal_context_allowed(config):
         remaining = max(0, limit - len(evidence))
         evidence.extend(collect_personal_evidence(config, terms, excludes, limit=remaining))
         remaining = max(0, limit - len(evidence))
