@@ -7,7 +7,7 @@ Systematic application of 11 thinking models to skill design. Each lens reveals 
 The multi-lens framework ensures comprehensive analysis by requiring explicit application of each thinking model to the skill being designed. This prevents the common failure mode of designing from a single perspective.
 
 **Minimum Requirements:**
-- All 11 lenses must be applied during Phase 1
+- Three lenses are load-bearing for every skill: Inversion, Pareto, Root Cause. Scan the rest; apply any that yields an actionable design change
 - At least 3 lenses must yield actionable insights
 - Conflicting perspectives must be explicitly resolved
 
@@ -320,7 +320,7 @@ Why the trade-off is worth it:
 
 ### Phase 1: Rapid Scan (All 11 Lenses)
 
-Apply each lens for 2-3 minutes to identify which are most relevant:
+Scan each lens briefly to identify which are most relevant:
 
 ```markdown
 ## Lens Relevance Assessment
@@ -342,7 +342,7 @@ Apply each lens for 2-3 minutes to identify which are most relevant:
 
 ### Phase 2: Deep Dive (High-Relevance Lenses)
 
-For each High-relevance lens, spend 10-15 minutes:
+For each High-relevance lens:
 1. Apply the full protocol described above
 2. Document insights in structured format
 3. Integrate insights into design

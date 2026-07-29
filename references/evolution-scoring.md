@@ -1,6 +1,6 @@
 # Evolution Scoring Framework
 
-The Evolution/Timelessness lens is the core evaluative perspective for SkillForge v4.0. Every skill must score ≥7 on timelessness to be approved.
+The Evolution/Timelessness lens is an ADVISORY heuristic in SkillForge 6. It is not a numeric gate: a self-assigned score gates nothing (the generating model predictably awards itself a pass). The falsifiable fragments of this rubric (pinned dated versions, missing extension points) are enforced mechanically by validate_skill.py; use the rest of this document as a design lens during analysis and adversarial review.
 
 ## Overview
 
@@ -12,7 +12,7 @@ Skills that score poorly become:
 - Obstacles to ecosystem evolution
 - Technical debt for future Claude users
 
-**Requirement:** All generated skills must score ≥7/10 on timelessness.
+**Usage:** treat scores as a structured way to find weaknesses, never as an approval threshold.
 
 ---
 
@@ -207,12 +207,12 @@ Verify these patterns are applied:
 
 **Wrong:**
 ```markdown
-Uses claude-3-5-sonnet-20241022 for analysis...
+Uses claude-sonnet-3-5-YYYYMMDD (a dated pin) for analysis...
 ```
 
 **Right:**
 ```markdown
-Uses configured model (default: claude-opus-4-6, configurable)...
+Uses the session's model, or a family alias if one must be named...
 ```
 
 ### Anti-Pattern 2: Tool-Specific Design
@@ -335,7 +335,7 @@ The Evolution/Timelessness Agent in the synthesis panel uses this framework to e
 
 1. Applies the full scoring rubric
 2. Documents score justification
-3. Identifies specific improvements if score < 7
-4. Only approves if score ≥ 7
+3. Identifies specific improvements for every weakness found
+4. Feeds findings to the adversarial reviewer (see synthesis-protocol.md); no score threshold
 
 **Unanimous approval requires all three agents, including Evolution Agent, to approve.**
