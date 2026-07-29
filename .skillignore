@@ -13,3 +13,6 @@ LICENSE
 __pycache__
 *.pyc
 assets/images
+SKILLFORGE_AUDIT.md
+docs/
+scripts/tests/
