@@ -11,15 +11,16 @@ Configuration precedence:
 from __future__ import annotations
 
 import json
+import os
 from copy import deepcopy
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
 
 CONFIG_DIR = Path.home() / ".config" / "skillforge"
 CONFIG_FILE = CONFIG_DIR / "config.json"
-DATA_DIR = Path.home() / ".local" / "share" / "skillforge"
 PROJECT_CONFIG_DIR = ".skillforge"
 PROJECT_CONFIG_FILE = "config.json"
 
@@ -45,6 +46,10 @@ DEFAULT_EXCLUDES = [
     "**/build/**",
 ]
 
+# Personal Context (local personal paths + GitHub metadata) is strictly
+# opt-in: disabled, with no shipped paths or owner handles. The installer
+# records {"consented": true, "consented_at": ...} when the user opts in,
+# and context_sources.py refuses to scan without that record.
 DEFAULT_CONFIG: dict[str, Any] = {
     "version": 1,
     "proactivity_level": "balanced",
@@ -53,11 +58,12 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "session": {"enabled": True},
         "project": {"enabled": True},
         "personal": {
-            "enabled": True,
-            "paths": ["~/kb", "~/Documents/Work", "~/Projects"],
+            "enabled": False,
+            "consented": False,
+            "paths": [],
             "github": {
-                "enabled": True,
-                "owner_limit": ["tripleyak", "jackatlasov"],
+                "enabled": False,
+                "owner_limit": [],
             },
         },
     },
@@ -144,9 +150,20 @@ def expand_paths(paths: list[str]) -> list[Path]:
 
 
 def data_dir() -> Path:
-    """Return and create SkillForge data directory."""
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    return DATA_DIR
+    """Return and create the SkillForge data directory (honors XDG_DATA_HOME)."""
+    base = os.environ.get("XDG_DATA_HOME", "")
+    root = Path(base).expanduser() if base else Path.home() / ".local" / "share"
+    path = root / "skillforge"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def personal_context_allowed(config: dict[str, Any]) -> bool:
+    """Return True only when Personal Context is enabled AND consented to."""
+    personal = config.get("context_sources", {}).get("personal", {})
+    if not isinstance(personal, dict):
+        return False
+    return bool(personal.get("enabled", False)) and personal.get("consented") is True
 
 
 def project_key(cwd: Optional[Path] = None) -> str:
@@ -154,15 +171,37 @@ def project_key(cwd: Optional[Path] = None) -> str:
     return str((cwd or Path.cwd()).resolve())
 
 
+def update_global_config(updates: dict[str, Any]) -> Path:
+    """Merge updates into the global config file.
+
+    The file stays sparse: only user choices are persisted, so future
+    changes to DEFAULT_CONFIG keep applying to unset keys at load time.
+    """
+    existing = read_json(CONFIG_FILE)
+    write_json(CONFIG_FILE, deep_merge(existing, updates))
+    return CONFIG_FILE
+
+
 def ensure_global_config(proactivity_level: str = "balanced") -> Path:
     """Create or update the global config with a Proactivity Level."""
     if proactivity_level not in PROACTIVITY_SETTINGS:
         raise ValueError(f"Unknown Proactivity Level: {proactivity_level}")
-    existing = read_json(CONFIG_FILE)
-    updated = deep_merge(DEFAULT_CONFIG, existing)
-    updated["proactivity_level"] = proactivity_level
-    write_json(CONFIG_FILE, updated)
-    return CONFIG_FILE
+    return update_global_config({"version": 1, "proactivity_level": proactivity_level})
+
+
+def record_personal_context_consent(paths: list[str], github_owners: list[str]) -> Path:
+    """Persist an explicit Personal Context opt-in with a consent timestamp."""
+    personal: dict[str, Any] = {
+        "enabled": True,
+        "consented": True,
+        "consented_at": datetime.now(timezone.utc).isoformat(),
+        "paths": list(paths),
+        "github": {
+            "enabled": bool(github_owners),
+            "owner_limit": list(github_owners),
+        },
+    }
+    return update_global_config({"context_sources": {"personal": personal}})
 
 
 def write_project_override(project: Path, proactivity_level: str) -> Path:
