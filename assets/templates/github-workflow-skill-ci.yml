@@ -1,0 +1,116 @@
+# Skill CI - regression discipline for shared skill libraries.
+#
+# Drop this file into .github/workflows/skill-ci.yml of any repository that
+# contains skills (directories with a SKILL.md). On every pull request it:
+#
+#   1. Diffs the PR against its base branch and finds every changed skill
+#      directory (the nearest ancestor of each changed file that contains
+#      a SKILL.md).
+#   2. Fans out a matrix job per changed skill that runs SkillForge's
+#      mechanical gates:
+#        - validate_skill.py        structure, frontmatter, lint
+#        - run_skill_evals.py --static   evals/ schema + trigger keyword lint
+#                                        (CI-safe: no model calls)
+#        - check_docs_safety.py     unsafe hook-command interpolation
+#
+# Action versions are pinned by MAJOR version below; bump deliberately.
+
+name: skill-ci
+
+on:
+  pull_request:
+
+# The SkillForge repository that provides the validation scripts.
+# Point this at your fork (or a vendored copy) and pin a ref you trust.
+env:
+  SKILLFORGE_REPO: https://github.com/tripleyak/SkillForge.git
+  SKILLFORGE_REF: main
+
+jobs:
+  # -------------------------------------------------------------------------
+  # Job 1: compute the matrix of changed skill directories from the git diff.
+  # -------------------------------------------------------------------------
+  changed-skills:
+    runs-on: ubuntu-latest
+    outputs:
+      skills: ${{ steps.diff.outputs.skills }}
+      any: ${{ steps.diff.outputs.any }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history so the merge-base diff against the base branch works.
+          fetch-depth: 0
+
+      - name: Find changed skill directories
+        id: diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Every file changed by this PR, relative to the base branch.
+          git fetch --no-tags origin "${{ github.base_ref }}"
+          changed=$(git diff --name-only "origin/${{ github.base_ref }}...HEAD")
+
+          # Map each changed file to its nearest ancestor containing SKILL.md.
+          skills=$(python3 - "$changed" <<'PY'
+          import json, os, sys
+          changed = sys.argv[1].split()
+          dirs = set()
+          for path in changed:
+              d = os.path.dirname(path)
+              while True:
+                  if os.path.isfile(os.path.join(d, "SKILL.md")):
+                      dirs.add(d or ".")
+                      break
+                  if not d:
+                      break
+                  d = os.path.dirname(d)
+          print(json.dumps(sorted(dirs)))
+          PY
+          )
+          echo "skills=$skills" >> "$GITHUB_OUTPUT"
+          if [ "$skills" = "[]" ]; then
+            echo "any=false" >> "$GITHUB_OUTPUT"
+            echo "No skill directories changed - nothing to validate."
+          else
+            echo "any=true" >> "$GITHUB_OUTPUT"
+            echo "Changed skills: $skills"
+          fi
+
+  # -------------------------------------------------------------------------
+  # Job 2: matrix - one validation job per changed skill.
+  # -------------------------------------------------------------------------
+  validate:
+    needs: changed-skills
+    if: needs.changed-skills.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # report every broken skill, not just the first
+      matrix:
+        skill: ${{ fromJSON(needs.changed-skills.outputs.skills) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Fetch SkillForge validation scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch "$SKILLFORGE_REF" "$SKILLFORGE_REPO" .skillforge-tools
+
+      - name: validate_skill.py (structure, frontmatter, lint)
+        shell: bash
+        run: |
+          python3 .skillforge-tools/scripts/validate_skill.py "${{ matrix.skill }}"
+
+      - name: run_skill_evals.py --static (evals schema + trigger lint)
+        shell: bash
+        run: |
+          python3 .skillforge-tools/scripts/run_skill_evals.py "${{ matrix.skill }}" --static
+
+      - name: check_docs_safety.py (unsafe hook-command interpolation)
+        shell: bash
+        run: |
+          python3 .skillforge-tools/scripts/check_docs_safety.py "${{ matrix.skill }}/SKILL.md"
