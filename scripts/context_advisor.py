@@ -24,16 +24,18 @@ from pathlib import Path
 from typing import Any
 
 try:
+    from _constants import INDEX_MAX_AGE_HOURS
     from advisor_scoring import Suggestion, build_suggestions
     from context_sources import collect_context_evidence
-    from discover_skills import discover_skills, get_index_path, save_index
+    from discover_skills import discover_skills, get_index_path, index_age_hours, save_index
     from skillforge_config import data_dir, level_settings, load_config, project_key
     from triage_skill_request import load_skill_index
 except ImportError:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from _constants import INDEX_MAX_AGE_HOURS
     from advisor_scoring import Suggestion, build_suggestions
     from context_sources import collect_context_evidence
-    from discover_skills import discover_skills, get_index_path, save_index
+    from discover_skills import discover_skills, get_index_path, index_age_hours, save_index
     from skillforge_config import data_dir, level_settings, load_config, project_key
     from triage_skill_request import load_skill_index
 
@@ -179,9 +181,12 @@ def is_suppressed(suggestion: Suggestion, state: dict[str, Any]) -> bool:
 
 
 def ensure_skill_index() -> dict[str, Any]:
-    index = load_skill_index()
-    if index:
-        return index
+    """Load the skill index, rebuilding when it is missing OR stale (>24h)."""
+    age = index_age_hours(get_index_path())
+    if age is not None and age <= INDEX_MAX_AGE_HOURS:
+        index = load_skill_index()
+        if index:
+            return index
     result = discover_skills(verbose=False)
     save_index(result, get_index_path())
     index = load_skill_index()
