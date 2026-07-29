@@ -27,34 +27,24 @@ import argparse
 import json
 import re
 import sys
-from dataclasses import dataclass, field
-from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple, Any
 
-
-# ===========================================================================
-# RESULT TYPES
-# ===========================================================================
-
-@dataclass
-class Result:
-    """Standard result object for script operations."""
-    success: bool
-    message: str
-    data: dict = field(default_factory=dict)
-    errors: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-
-    def to_dict(self) -> dict:
-        return {
-            "success": self.success,
-            "message": self.message,
-            "data": self.data,
-            "errors": self.errors,
-            "warnings": self.warnings,
-            "timestamp": datetime.now().isoformat()
-        }
+try:
+    from _constants import (
+        DOMAIN_VOCABULARY,
+        STRONG_MATCH_THRESHOLD, MODERATE_MATCH_THRESHOLD, WEAK_MATCH_THRESHOLD,
+        score_band,
+    )
+    from common import Result, get_index_path, phrase_in_text
+except ImportError:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from _constants import (
+        DOMAIN_VOCABULARY,
+        STRONG_MATCH_THRESHOLD, MODERATE_MATCH_THRESHOLD, WEAK_MATCH_THRESHOLD,
+        score_band,
+    )
+    from common import Result, get_index_path, phrase_in_text
 
 
 class Action:
@@ -205,17 +195,12 @@ def classify_input(query: str) -> Tuple[str, Dict[str, Any]]:
 
 
 # ===========================================================================
-# SKILL MATCHING (from skillrecommender)
+# SKILL MATCHING
 # ===========================================================================
 
-def get_index_path() -> Path:
-    """Get the skill index file path."""
-    return Path.home() / ".cache" / "skillrecommender" / "skill_index.json"
-
-
-def load_skill_index() -> Optional[Dict]:
+def load_skill_index(index_path: Optional[Path] = None) -> Optional[Dict]:
     """Load skill index from disk."""
-    index_path = get_index_path()
+    index_path = Path(index_path) if index_path else get_index_path()
     if not index_path.exists():
         return None
     try:
@@ -224,51 +209,9 @@ def load_skill_index() -> Optional[Dict]:
         return None
 
 
-# ===========================================================================
-# UNIVERSAL DOMAIN SYNONYMS
-# ===========================================================================
-# These are CONCEPT-based synonyms, not tied to any specific skill names.
-# They help match user queries to skill domains regardless of what skills exist.
-
-DOMAIN_SYNONYMS = {
-    # Document formats - maps concepts to related terms
-    "spreadsheet": ["excel", "xlsx", "xls", "csv", "workbook", "tabular", "data table", "cells", "rows columns"],
-    "document": ["word", "docx", "doc", "text document", "write document", "report"],
-    "presentation": ["powerpoint", "pptx", "slides", "deck", "slide deck", "keynote", "pitch"],
-    "pdf": ["pdf", "export pdf", "portable document"],
-
-    # Development concepts
-    "debugging": ["debug", "error", "exception", "stack trace", "traceback", "crash", "fix bug", "breakpoint", "investigate"],
-    "testing": ["test", "unit test", "integration test", "e2e", "coverage", "spec", "tdd", "jest", "vitest", "pytest", "mocha"],
-    "security": ["security", "vulnerability", "owasp", "audit", "secure", "penetration", "pentest", "xss", "injection"],
-    "code_quality": ["review", "code review", "pr review", "pull request", "refactor", "clean code", "code smell", "lint"],
-    "database": ["database", "db", "schema", "migration", "sql", "postgres", "mysql", "mongodb", "data model", "orm"],
-    "api": ["api", "rest", "graphql", "endpoint", "openapi", "swagger", "restful", "http"],
-    "frontend": ["ui", "ux", "frontend", "react", "vue", "angular", "css", "styling", "component", "user interface"],
-    "accessibility": ["accessibility", "a11y", "wcag", "screen reader", "aria", "keyboard navigation"],
-    "performance": ["performance", "optimize", "slow", "speed", "fast", "bottleneck", "profiling", "cache"],
-    "authentication": ["auth", "login", "authentication", "oauth", "jwt", "session", "sign in", "sign up", "password"],
-    "deployment": ["deploy", "deployment", "production", "release", "ship", "hosting", "ci", "cd", "pipeline"],
-    "devops": ["docker", "kubernetes", "k8s", "container", "helm", "terraform", "infrastructure"],
-    "documentation": ["documentation", "docs", "readme", "changelog", "api docs", "jsdoc"],
-    "architecture": ["architecture", "system design", "design pattern", "microservices", "monolith"],
-    "workflow": ["flowchart", "diagram", "workflow", "process", "swimlane", "sequence diagram", "uml"],
-
-    # AI/ML concepts
-    "ai_ml": ["ai", "ml", "machine learning", "llm", "rag", "embedding", "langchain", "prompt", "model"],
-
-    # Creative
-    "visual": ["visual", "image", "graphic", "art", "canvas", "design"],
-}
-
-
-def phrase_in_text(phrase: str, text: str) -> bool:
-    """Return True when phrase appears as a whole token/phrase."""
-    phrase = phrase.strip().lower()
-    if not phrase:
-        return False
-    pattern = rf"(?<![a-z0-9]){re.escape(phrase)}(?![a-z0-9])"
-    return re.search(pattern, text.lower()) is not None
+# Universal domain synonyms, shared with discover_skills.py via
+# _constants.DOMAIN_VOCABULARY. Concept-based, not tied to skill names.
+DOMAIN_SYNONYMS = DOMAIN_VOCABULARY
 
 
 def detect_query_domains(query: str) -> List[Tuple[str, List[str]]]:
@@ -353,11 +296,12 @@ def calculate_match_score(query: str, skill: Dict) -> Tuple[float, List[str]]:
             keyword_matched = True
             break
 
-    # Check if domain terms appear in skill's description
+    # Check if domain terms appear in skill's description (word-boundary
+    # matching: 'ai' must not match 'email')
     desc_matched = False
     for domain, matched_terms in query_domains:
         for term in matched_terms:
-            if term in skill_description:
+            if phrase_in_text(term, skill_description):
                 score += 10
                 reasons.append(f"description: {term}")
                 desc_matched = True
@@ -366,7 +310,7 @@ def calculate_match_score(query: str, skill: Dict) -> Tuple[float, List[str]]:
             break
 
         # Also check domain name in description
-        if domain in skill_description:
+        if phrase_in_text(domain.replace("_", " "), skill_description):
             score += 10
             reasons.append(f"description: {domain}")
             desc_matched = True
@@ -453,9 +397,11 @@ def find_matching_skills(query: str, skills: List[Dict], limit: int = 5, signals
             score += min(15, len(matching_domains) * 5)
 
         if score > 0:
+            final_score = min(100, score)
             matches.append({
                 "name": skill.get("name"),
-                "score": min(100, score),
+                "score": final_score,
+                "band": score_band(final_score),
                 "reasons": reasons,
                 "source": skill.get("source"),
                 "path": skill.get("path"),
@@ -465,7 +411,16 @@ def find_matching_skills(query: str, skills: List[Dict], limit: int = 5, signals
                 "triggers": skill.get("triggers", []),
             })
 
-    matches.sort(key=lambda m: m["score"], reverse=True)
+    # Dedupe by skill name (keep the highest-scoring entry) so the same
+    # skill never appears twice in one recommendation list.
+    best_by_name: Dict[str, Dict] = {}
+    for match in matches:
+        key = str(match["name"]).lower()
+        if key not in best_by_name or match["score"] > best_by_name[key]["score"]:
+            best_by_name[key] = match
+    matches = list(best_by_name.values())
+
+    matches.sort(key=lambda m: (-m["score"], str(m["name"])))
     return matches[:limit]
 
 
@@ -473,20 +428,50 @@ def find_matching_skills(query: str, skills: List[Dict], limit: int = 5, signals
 # TRIAGE DECISION
 # ===========================================================================
 
+def resolve_skill_by_name(skill_name: str, skills: List[Dict]) -> Optional[Dict]:
+    """Resolve a user-mentioned skill name against the FULL index.
+
+    Exact (case-insensitive) name matches win; otherwise fall back to
+    token containment (e.g. 'testing' resolves 'testing-workflow').
+    """
+    needle = skill_name.strip().lower()
+    if not needle:
+        return None
+
+    for skill in skills:
+        if str(skill.get("name", "")).lower() == needle:
+            return skill
+
+    partial = None
+    for skill in skills:
+        name = str(skill.get("name", "")).lower()
+        if needle in name or name in needle:
+            if partial is None or len(name) < len(str(partial.get("name", ""))):
+                partial = skill
+    return partial
+
+
 def make_triage_decision(
     category: str,
     signals: Dict,
     matches: List[Dict],
-    query: str
+    query: str,
+    skills: Optional[List[Dict]] = None
 ) -> Tuple[str, Dict]:
     """
     Make the final triage decision based on input analysis and skill matches.
 
+    Thresholds come from _constants (STRONG/MODERATE/WEAK match bands) - the
+    single source of truth. `skills` is the full index, used to resolve
+    explicitly named skills beyond the capped match list.
+
     Returns:
         Tuple of (action, details_dict)
     """
+    skills = skills or []
     top_match = matches[0] if matches else None
     top_score = top_match["score"] if top_match else 0
+    top_band = score_band(top_score)
 
     # Multi-domain detection
     if len(matches) >= 3:
@@ -501,6 +486,7 @@ def make_triage_decision(
         "category": category,
         "top_match": top_match,
         "top_score": top_score,
+        "top_band": top_band,
         "match_count": len(matches),
         "multi_domain": multi_domain,
     }
@@ -509,18 +495,18 @@ def make_triage_decision(
 
     # Explicit create request
     if category == InputCategory.EXPLICIT_CREATE:
-        if top_score >= 80:
+        if top_score >= STRONG_MATCH_THRESHOLD:
             # High match - existing skill might already do this
             return Action.CLARIFY, {
                 **details,
-                "reason": f"Existing skill '{top_match['name']}' ({top_score}%) may already handle this. Create anyway or use existing?",
+                "reason": f"Existing skill '{top_match['name']}' (strong keyword match) may already handle this. Create anyway or use existing?",
                 "suggested_action": "Ask user to clarify if they want to create despite existing skill",
             }
-        elif top_score >= 50:
+        elif top_score >= MODERATE_MATCH_THRESHOLD:
             # Moderate match - could improve existing
             return Action.CLARIFY, {
                 **details,
-                "reason": f"Existing skill '{top_match['name']}' ({top_score}%) is similar. Create new or improve existing?",
+                "reason": f"Existing skill '{top_match['name']}' (moderate keyword match) is similar. Create new or improve existing?",
                 "suggested_action": "Ask if user wants new skill or to enhance existing",
             }
         else:
@@ -535,14 +521,14 @@ def make_triage_decision(
     if category == InputCategory.EXPLICIT_IMPROVE:
         skill_name = signals.get("mentioned_skill_name")
         if skill_name:
-            # Find the mentioned skill
-            for m in matches:
-                if skill_name.lower() in m["name"].lower():
-                    return Action.IMPROVE_EXISTING, {
-                        **details,
-                        "reason": f"Improving existing skill: {m['name']}",
-                        "target_skill": m["name"],
-                    }
+            # Resolve against the FULL index, not just the capped match list
+            resolved = resolve_skill_by_name(skill_name, skills)
+            if resolved:
+                return Action.IMPROVE_EXISTING, {
+                    **details,
+                    "reason": f"Improving existing skill: {resolved['name']}",
+                    "target_skill": resolved["name"],
+                }
         # Couldn't find mentioned skill
         return Action.CLARIFY, {
             **details,
@@ -552,10 +538,10 @@ def make_triage_decision(
 
     # Skill question - just recommend
     if category == InputCategory.SKILL_QUESTION:
-        if top_score >= 60:
+        if top_score >= MODERATE_MATCH_THRESHOLD:
             return Action.USE_EXISTING, {
                 **details,
-                "reason": f"Recommending existing skill: {top_match['name']} ({top_score}%)",
+                "reason": f"Recommending existing skill: {top_match['name']} ({top_band} keyword match)",
                 "recommended_skills": [m["name"] for m in matches[:3]],
             }
         else:
@@ -570,16 +556,16 @@ def make_triage_decision(
         debugging_skills = [m for m in matches if "debugging" in [d.lower() for d in m.get("domains", [])]]
         best_debug_skill = debugging_skills[0] if debugging_skills else None
 
-        if best_debug_skill and best_debug_skill["score"] >= 50:
+        if best_debug_skill and best_debug_skill["score"] >= MODERATE_MATCH_THRESHOLD:
             return Action.USE_EXISTING, {
                 **details,
-                "reason": f"Error detected - recommending: {best_debug_skill['name']} ({best_debug_skill['score']}%)",
+                "reason": f"Error detected - recommending: {best_debug_skill['name']} ({best_debug_skill['band']} keyword match)",
                 "recommended_skills": [best_debug_skill["name"]],
             }
-        elif top_score >= 50:
+        elif top_score >= MODERATE_MATCH_THRESHOLD:
             return Action.USE_EXISTING, {
                 **details,
-                "reason": f"Error handling skill: {top_match['name']} ({top_score}%)",
+                "reason": f"Error handling skill: {top_match['name']} ({top_band} keyword match)",
                 "recommended_skills": [m["name"] for m in matches[:3]],
             }
         else:
@@ -592,22 +578,22 @@ def make_triage_decision(
     if category in [InputCategory.CODE_SNIPPET,
                     InputCategory.URL_CONTENT, InputCategory.TASK_REQUEST]:
 
-        if multi_domain and top_score >= 50:
+        if multi_domain and top_score >= MODERATE_MATCH_THRESHOLD:
             return Action.COMPOSE, {
                 **details,
                 "reason": "Multiple domains detected. Suggest skill composition.",
                 "recommended_chain": [m["name"] for m in matches[:3]],
             }
-        elif top_score >= 80:
+        elif top_score >= STRONG_MATCH_THRESHOLD:
             return Action.USE_EXISTING, {
                 **details,
-                "reason": f"Strong match: {top_match['name']} ({top_score}%)",
+                "reason": f"Strong keyword match: {top_match['name']}",
                 "recommended_skills": [m["name"] for m in matches[:3]],
             }
-        elif top_score >= 50:
+        elif top_score >= MODERATE_MATCH_THRESHOLD:
             return Action.IMPROVE_EXISTING, {
                 **details,
-                "reason": f"Partial match: {top_match['name']} ({top_score}%) could be enhanced for this use case",
+                "reason": f"Moderate keyword match: {top_match['name']} could be enhanced for this use case",
                 "target_skill": top_match["name"],
             }
         else:
@@ -617,13 +603,13 @@ def make_triage_decision(
             }
 
     # General/unclear input
-    if top_score >= 70:
+    if top_score >= MODERATE_MATCH_THRESHOLD:
         return Action.USE_EXISTING, {
             **details,
-            "reason": f"Best match: {top_match['name']} ({top_score}%)",
+            "reason": f"Best match: {top_match['name']} ({top_band} keyword match)",
             "recommended_skills": [m["name"] for m in matches[:3]],
         }
-    elif top_score >= 40:
+    elif top_score >= WEAK_MATCH_THRESHOLD:
         return Action.CLARIFY, {
             **details,
             "reason": "Unclear intent. Partial matches found.",
@@ -641,7 +627,7 @@ def make_triage_decision(
 # MAIN TRIAGE FUNCTION
 # ===========================================================================
 
-def triage_request(query: str) -> Result:
+def triage_request(query: str, index_path: Optional[Path] = None) -> Result:
     """
     Analyze any user input and determine the best skill-related action.
 
@@ -652,12 +638,12 @@ def triage_request(query: str) -> Result:
     category, signals = classify_input(query)
 
     # Step 2: Load skill index
-    index = load_skill_index()
+    index = load_skill_index(index_path)
     if not index:
         return Result(
             success=False,
             message="Skill index not found. Run discover_skills.py first.",
-            errors=["Index file missing: ~/.cache/skillrecommender/skill_index.json"]
+            errors=[f"Index file missing: {index_path or get_index_path()}"]
         )
 
     skills = index.get("skills", [])
@@ -665,8 +651,8 @@ def triage_request(query: str) -> Result:
     # Step 3: Find matching skills (pass signals for context-aware boosting)
     matches = find_matching_skills(query, skills, signals=signals)
 
-    # Step 4: Make decision
-    action, details = make_triage_decision(category, signals, matches, query)
+    # Step 4: Make decision (full index passed for named-skill resolution)
+    action, details = make_triage_decision(category, signals, matches, query, skills=skills)
 
     # Build response
     return Result(
@@ -707,12 +693,14 @@ def format_output(result: Result) -> str:
     if "reason" in details:
         lines.append(f"Reason: {details['reason']}")
 
-    # Top matches
+    # Top matches (bands, not raw percentages - scores are keyword-overlap
+    # heuristics, not calibrated confidence; JSON output keeps the numbers)
     matches = data.get("top_matches", [])
     if matches:
         lines.append(f"\nTop Skill Matches:")
         for i, m in enumerate(matches[:3], 1):
-            lines.append(f"  {i}. {m['name']} ({m['score']}%)")
+            band = m.get("band") or score_band(m.get("score", 0))
+            lines.append(f"  {i}. {m['name']} [{band} keyword match]")
             lines.append(f"     {m.get('description', '')[:60]}...")
             if m.get("reasons"):
                 lines.append(f"     Matched: {', '.join(m['reasons'][:2])}")
