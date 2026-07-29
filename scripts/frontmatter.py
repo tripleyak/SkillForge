@@ -130,7 +130,10 @@ _BLOCK_SCALAR_INDICATORS = {">", ">-", ">+", "|", "|-", "|+"}
 
 # A mapping entry looks like `key:` or `key: value` where the colon is
 # followed by whitespace or end of line (so `https://x` is not a key).
-_MAPPING_KEY_RE = re.compile(r"^(\"[^\"]*\"|'[^']*'|[^:\s][^:]*?)\s*:(\s+|$)")
+# An unquoted key may not START with a quote character: text opening with a
+# quote is either a fully-quoted key (first two alternatives) or a quoted
+# scalar (e.g. the list item `- "TODO: fix this"`), never a plain key.
+_MAPPING_KEY_RE = re.compile(r"^(\"[^\"]*\"|'[^']*'|[^:\s\"'][^:]*?)\s*:(\s+|$)")
 
 
 def _vendored_parse(text: str) -> Any:
